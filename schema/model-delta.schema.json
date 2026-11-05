@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/mep/model-delta.schema.json",
+  "title": "ModelDelta",
+  "description": "Plugin -> engine. One committed Revit transaction = one delta, applied atomically to the cloud twin. Lightweight geometry only (bounding boxes, optional transform); the heavy model never leaves the client. Metres, project shared coordinates (the plugin converts from Revit internal feet and applies ActiveProjectLocation.GetTotalTransform()).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "projectId", "modelId", "sequence", "transactionId", "source", "elements"],
+  "properties": {
+    "schemaVersion": { "type": "string", "enum": ["1.0"] },
+    "projectId": { "type": "string" },
+    "modelId": { "type": "string", "description": "The RVT (or linked model) this delta comes from; part of every element id." },
+    "sequence": { "type": "integer", "minimum": 0, "description": "Client-monotonic per model; the server log offset orders across clients. Never wall-clock time." },
+    "transactionId": { "type": "string", "description": "Idempotency key: a redelivered delta with the same id is a no-op." },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["app", "event", "user", "ts"],
+      "properties": {
+        "app": { "type": "string", "enum": ["revit", "web"] },
+        "event": { "type": "string", "enum": ["document_changed", "synchronized_with_central"],
+                   "description": "document_changed = unsynced local edit (live preview); synchronized_with_central = committed." },
+        "user": { "type": "string" },
+        "ts": { "type": "string", "format": "date-time" }
+      }
+    },
+    "elements": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "versionGuid", "category", "op"],
+        "properties": {
+          "id": { "type": "string", "description": "{modelId}:{Revit UniqueId}" },
+          "versionGuid": { "type": "string", "description": "Element.VersionGuid at the time of the change (equality only, never ordered)." },
+          "category": { "type": "string", "enum": ["structural_framing", "structural_column", "floor", "wall", "ceiling", "duct", "pipe", "cable_tray", "other"] },
+          "op": { "type": "string", "enum": ["added", "modified", "deleted"] },
+          "bbox": { "$ref": "#/$defs/box" },
+          "transform": { "type": "array", "minItems": 12, "maxItems": 12, "items": { "type": "number" },
+                         "description": "Optional 3x4 row-major rigid transform for non-axis-aligned solids." },
+          "system": { "type": "string", "description": "MEP system name, for MEP elements only." }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "vec3": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "number" } },
+    "box": { "type": "object", "additionalProperties": false, "required": ["min", "max"],
+             "properties": { "min": { "$ref": "#/$defs/vec3" }, "max": { "$ref": "#/$defs/vec3" } } }
+  }
+}

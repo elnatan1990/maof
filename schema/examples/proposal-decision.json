@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "1.0",
+  "proposalId": "prop-01HZX4N7K2",
+  "decision": "accept",
+  "readSet": {
+    "STR-L03:0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d-000e1f20": "6d0d6c8e-2b4f-4d2a-9c1e-3f5a7b9c1d2e",
+    "MEP-L03:7b1c2d3e-0000-4000-8000-000000000001-0001a2b3": "9a8b7c6d-5e4f-4321-8765-43210fedcba9"
+  },
+  "appliedElementIds": [
+    "MEP-L03:7b1c2d3e-0000-4000-8000-000000000001-0001a2b4",
+    "MEP-L03:7b1c2d3e-0000-4000-8000-000000000001-0001a2b5",
+    "MEP-L03:7b1c2d3e-0000-4000-8000-000000000001-0001a2b6"
+  ],
+  "user": "mech.engineer@example.invalid",
+  "ts": "2026-11-05T09:16:40Z"
+}

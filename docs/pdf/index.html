@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Real-Time MEP Coordination — Design &amp; Algorithmic Spike</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* A4, two reading columns, figures spanning. Margins live in @page only (never also in the printer). */
+  @page { size: A4; margin: 10mm 10mm 10mm; }
+  :root { --ink: #122033; --muted: #55657a; --accent: #0f7c86; --accent-soft: #e3f2f3; --line: #d6dce3; --soft: #f1f4f3; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #fff; }
+  body { font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; color: var(--ink); font-size: 8.3pt; line-height: 1.26; }
+  code, pre { font-family: "IBM Plex Mono", Consolas, monospace; }
+  code { font-size: 7.6pt; background: var(--soft); padding: 0 2px; border-radius: 2px; }
+  pre { font-size: 6.6pt; line-height: 1.25; background: var(--soft); border: 1px solid var(--line); border-radius: 3px; padding: 4px 6px; margin: 0; white-space: pre; overflow: hidden; }
+  h1 { font-size: 16pt; margin: 0; line-height: 1.12; letter-spacing: -.01em; }
+  h2 { font-size: 10.6pt; margin: 0 0 1.8mm; padding-bottom: .8mm; border-bottom: 1.5px solid var(--ink); column-span: all; break-after: avoid; }
+  h2 span { color: var(--accent); margin-right: 2mm; }
+  p { margin: 0 0 1.5mm; }
+  b { font-weight: 600; }
+  .header { display: flex; justify-content: space-between; align-items: flex-end; gap: 8mm; border-bottom: 2px solid var(--ink); padding-bottom: 1.4mm; margin-bottom: 1.6mm; }
+  .header .meta { font-size: 7.8pt; color: var(--muted); text-align: right; white-space: nowrap; line-height: 1.4; }
+  .header .meta b { color: var(--ink); }
+  .header .meta a { color: var(--accent); text-decoration: none; }
+  .assume { background: var(--accent-soft); border-left: 2.5px solid var(--accent); padding: 1.5mm 2.4mm; font-size: 7.9pt; margin-bottom: 2.6mm; }
+  .assume b { color: var(--accent); }
+  section { margin-bottom: 2.4mm; }
+  .cols { column-count: 2; column-gap: 5mm; column-fill: balance; }
+  .span { column-span: all; }
+  ol, ul { margin: 0 0 1.5mm; padding-left: 3.8mm; }
+  li { margin-bottom: .5mm; }
+  figure { margin: 1.2mm auto 1.8mm; break-inside: avoid; page-break-inside: avoid; }
+  figure img { display: block; width: 100%; height: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 7pt; margin: .8mm 0 1.2mm; }
+  th, td { text-align: left; padding: .6mm 1.2mm; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 6.5pt; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  td.c { font-weight: 600; }
+  .result { background: var(--soft); border-radius: 3px; padding: 1.6mm 2.2mm; margin: 0 0 1.5mm; break-inside: avoid; }
+  .result .wp { font-family: "IBM Plex Mono", Consolas, monospace; font-size: 7.1pt; display: block; margin: .5mm 0 .8mm; }
+  .keep { break-inside: avoid; page-break-inside: avoid; }
+  .json { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; column-span: all; margin: .5mm 0 1mm; }
+  .json pre { font-size: 6pt; line-height: 1.2; }
+  .appendix { page-break-before: always; }
+  .appendix h2 { column-span: none; }
+  .appendix pre { font-size: 6.8pt; line-height: 1.25; }
+  .small { font-size: 7.6pt; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>Real-Time MEP Coordination — Design &amp; Algorithmic Spike</h1>
+    <div class="small" style="margin-top:1mm">Spatial routing around a beam · the Revit-to-cloud round trip · an AI safety gate and the plugin contract</div>
+  </div>
+  <div class="meta"><b>Elnatan Davidovitch</b><br>elnatan1990@gmail.com · 050-6998223 · <a href="https://www.linkedin.com/in/elndav">linkedin.com/in/elndav</a><br>code, tests, schemas: <a href="https://github.com/elnatan1990/maof">github.com/elnatan1990/maof</a><br>live companion page: <a href="__LIVE_URL__">__LIVE_HOST__</a></div>
+</div>
+
+<div class="assume"><b>Assumptions.</b> (1) The beam is a downstand flush with the slab: its top (Z = 3.20) is the soffit, so routing <i>over</i> it is infeasible. (2) The suspended-ceiling height <code>Z_c</code> comes from the architectural model; the exercise gives none, so the worked example leaves it open and a second case shows it biting. (3) The exercise's duct is a centre-line; a real 400 × 300 insulated duct is the second case. (4) Metres, project shared coordinates; the plugin converts Revit's internal feet. (5) The architect moves the beam +0.40 m in X. Every number below is printed by <code>python -m routing</code> in the repository and asserted by its tests.</div>
+
+<section>
+  <h2><span>1</span>Spatial routing — a deterministic line-probe router, validator-last</h2>
+  <div class="cols">
+    <p><b>Representation.</b> Obstacles are axis-aligned boxes inflated by <i>clearance + the duct's half-extent in the bend plane</i>: a conservative Minkowski sum (a box, not a rounded box). A 45° diagonal leaving an inflated corner keeps margin·√2 ≈ 0.21 m from the real corner, so the box is safe for diagonals too. Everything is snapped to and compared at millimetres, so "exactly 15 cm" is a clean pass, not a rounding accident.</p>
+    <p><b>Why a geometric offset, not a search.</b> Ducts are axis-aligned with 45°/90° fittings, and a moved beam is one blocker on a straight run. For that case an analytic <i>line probe</i> (the Hightower / Mikami–Tabuchi family) is exact, deterministic and sub-millisecond:</p>
+    <ol>
+      <li><b>Probe</b> — does the straight run penetrate the inflated box? No → keep it.</li>
+      <li><b>Candidates</b> — under, over, left, right, each with an explicit feasibility test. Under: <code>z = beam_bottom − c − h</code>, feasible iff <code>z − h − c_ceiling ≥ Z_c</code>; over: <code>z + h + c ≤ soffit</code>; lateral: inside the zone. None may cut a second obstacle; a gravity pipe may never rise.</li>
+      <li><b>Waypoints</b> — a 45° trapezoid (or 90° rectangle) between the inflated faces; cost = added length + 0.25 m per bend; the cheapest wins, ties break in a fixed order, so the result is stable.</li>
+      <li><b>No feasible candidate → <code>NO_ROUTE(PLENUM_TOO_SHALLOW)</code></b> and a coordination issue (BCF) for structural: sleeve, local bulkhead, or move the beam. A coordination tool must say <i>why</i> there is no route.</li>
+      <li><b>Validate</b> — the rule set the AI gate uses (§3) checks the router's own output.</li>
+    </ol>
+    <p><b>With more time:</b> a second tier for the multi-obstacle case — a sparse orthogonal graph on the inflated face coordinates, A* with a turn penalty, a chamfer pass to 45° offsets — ending in the same validator.</p>
+    <div class="result keep">
+      <b>Worked result</b> (<code>python -m routing</code>): inflated box X ∈ [3.85, 4.75], Z ∈ [2.45, 3.35]; over is infeasible (soffit), lateral is outside the zone (the beam spans all of Y) → <b>under</b>:
+      <span class="wp">A (2.0, 5.0, 2.90) → (3.40, 5.0, 2.90) → (3.85, 5.0, 2.45) → (4.75, 5.0, 2.45) → (5.20, 5.0, 2.90) → B (7.0, 5.0, 2.90)</span>
+      <b>5.373 m</b> (+0.373 m, +7.5 %), four 45° fittings, clearance 0.150 m on the flat run and 0.212 m at the diagonals. The 90° variant is 5.90 m (+18 %) for the same four fittings: 45° wins on length and pressure loss. A two-bend "V" would need 11–14° legs and passes 0.09 m from the beam: rejected. Real section (400 × 300, 25 mm insulation, 15 mm flange, h = 0.19): centre-line 2.26, duct bottom 2.07 — feasible only if the ceiling is below 2.05; under a 2.70 ceiling the answer is <code>NO_ROUTE</code>.
+    </div>
+<pre class="keep">reroute(run, obstacles, c):          # routing/reroute.py
+  box = first obstacle whose inflated box
+        the straight run penetrates
+  if box is None: return straight
+  for side in (under, over, left, right):   # fixed order
+    inf    = box.inflated(c.clearance
+                 + run.section.half_in_plane(side))
+    target = inf.face(side); d = |target - run.level|
+    lead   = d if c.bend == 45 else 0
+    pts    = [A, A.at(inf.entry - lead),
+              (inf.entry, target), (inf.exit, target),
+              B.at(inf.exit + lead), B]
+    if not feasible(side, target, ceiling, soffit,
+                    zone, others, min_straight):
+        note reason; continue
+    cost[side] = length(pts) - |AB| + 0.25 * bends(pts)
+  best = argmin(cost) or NO_ROUTE(preferred side's reason)
+  assert validate(best.pts) == []    # the gate's rules</pre>
+  </div>
+  <figure class="span" style="width:130mm"><img src="../diagrams/route-xz.svg" alt="Cross-section at Y = 5 m"></figure>
+  <table class="span">
+    <thead><tr><th>approach</th><th>deterministic</th><th>bends</th><th>latency (estimates, one plenum zone)</th><th>note</th></tr></thead>
+    <tbody>
+      <tr><td class="c">geometric offset (chosen: one blocker)</td><td>yes</td><td>45°/90° by construction</td><td>&lt; 1 ms</td><td>exact; one obstacle per probe</td></tr>
+      <tr><td>sparse orthogonal graph + A* with turn penalty</td><td>yes</td><td>orthogonal, chamfer pass → 45°</td><td>1–30 ms</td><td>the generalisation; nodes only at inflated face coordinates</td></tr>
+      <tr><td>A* on a 5 cm voxel grid</td><td>yes</td><td>staircase → smoothing</td><td>50 ms – 2 s; 800k voxels per 10 × 10 × 1 m</td><td>resolution fights clearance accuracy; turn cost needs direction state</td></tr>
+      <tr><td>3-D visibility graph</td><td>yes</td><td>arbitrary angles</td><td>ms</td><td>shortest path among 3-D polyhedra is NP-hard; the vertex graph is a heuristic</td></tr>
+      <tr><td>RRT*</td><td>no (sampled)</td><td>random → smoothing</td><td>100 ms – s</td><td>for high-DOF kinematics, not ducts</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2><span>2</span>Real-time data flow — a 40 cm beam move, Revit-native</h2>
+  <div class="cols">
+    <p><b>Capture (the plugin).</b> <code>Application.DocumentChanged</code> fires after the architect's transaction commits. Filter to geometric categories; compare <code>Element.VersionGuid</code> + a bbox hash so parameter edits are dropped. <b>One transaction = one <code>ModelDelta</code></b>, applied atomically to the twin; no debounce, coalesce only while a delta for the same element is in flight. Feet → metres via <code>UnitUtils</code>, shared coordinates via <code>ActiveProjectLocation.GetTotalTransform()</code>; identity <code>{modelId}:{UniqueId}</code>, version <code>VersionGuid</code>. Our own accepted-proposal transactions are recognised by name and not echoed back. <code>DocumentChanged</code> = <i>live preview</i> proposal, <code>DocumentSynchronizedWithCentral</code> = <i>committed</i>. The beam lives in a linked RVT the mechanical engineer sees only after a link reload: the twin bridges that gap (ghost beam + rerouted duct before the reload, re-validation after it).</p>
+    <p><b>Transport.</b> WebSocket + protobuf/MessagePack for <i>both</i> desktop and web: Revit add-ins are .NET Framework 4.8 sharing one AppDomain, where <code>Grpc.Net.Client</code>/<code>Google.Protobuf</code> clash with other vendors' add-ins and HTTP/2 bidi streaming needs WinHttp on Windows 11; grpc-web has no client streaming. gRPC stays service-to-service.</p>
+    <p><b>Cloud.</b> Gateway (project-scoped tokens) → <b>NATS JetStream</b>, partitioned by project (a zone is a fan-out concern, not an ordering key) → spatial engine. The <i>twin</i> is a materialised view of the event log (bounding volumes + centre-lines, ~100 B per element; rebuilt from the log on failover) in an R-tree: update the beam in O(log n), query the runs touching old ∪ new inflated boxes, reroute, validate, append a <code>RoutingProposal</code> — at-least-once delivery, idempotent consumer keyed by (id, VersionGuid). One beam affecting 200 runs becomes <b>one <code>ChangeImpact{proposals[]}</code></b>, pushed to the mechanical engineer <i>and</i> to the architect: "your move affects 3 runs" is the most valuable real-time signal in the product.</p>
+    <p><b>Apply (the plugin).</b> An <code>ExternalEvent</code> draws the proposal as a DirectContext3D overlay; nothing is edited until the engineer accepts. Accept is a <b>compare-and-swap on the proposal's read-set</b> <code>{elementId: VersionGuid}</code>, otherwise <code>STALE_VERSION</code>. Reconnect: outbox + last acknowledged sequence, replay or a zone snapshot.</p>
+    <p><b>Within seconds, nothing freezes.</b> Deltas (&lt; 1 KB), never models (100 MB – 2 GB); the heavy model never leaves the client; an overlay, not an edit; one impact message, not N pushes; an incremental index. Budget (estimates): extract 5–20 ms · upload 20–60 · bus &lt; 10 · index &lt; 1 · route &lt; 1 · validate &lt; 1 · persist ~5 · push 20–60 · apply 10–30 → <b>p50 target 0.5 s, p99 target 3 s</b>. Not under our control: Revit's regeneration after the commit and <code>ExternalEvent</code> idle scheduling (a modal dialog delays it).</p>
+  </div>
+  <figure class="span" style="width:140mm"><img src="../diagrams/pipeline.svg" alt="Pipeline"></figure>
+</section>
+
+<section>
+  <h2><span>3</span>AI safety gate and the API contract</h2>
+  <figure class="span" style="width:112mm"><img src="../diagrams/safety-gate.svg" alt="Safety gate"></figure>
+  <div class="cols">
+    <p><b>The guarantee comes from what the model may output.</b> The pattern model emits <i>cost weights or a ranking over deterministic candidates</i> — never geometry — so its best output is still a route the router built and validated. In the weaker mode (candidate waypoints in a strict JSON schema) the same <code>validate()</code> runs: clearance with the duct body, ceiling clearance on the duct <i>bottom</i>, gravity slope (monotonic, ≥ 1 %), bends ∈ {45°, 90°}, minimum straight, soffit, zone, endpoints. Fail → bounded deterministic repair (push waypoints out through the nearest inflated face, three passes) → re-validate → otherwise <b>fallback</b> to the deterministic route, valid by construction. Every decision writes an audit record (ruleset version, model version, input hash, rules passed and failed). Shadow mode first, a kill switch, and property tests: random obstacles + random perturbations ⇒ zero accepted violations (<code>tests/</code>).</p>
+    <p><b>Contract</b> (JSON Schema in <code>schema/</code>, examples in <code>schema/examples/</code>): <code>schemaVersion</code>, metres, shared coordinates, ids <code>{modelId}:{UniqueId}</code>, versions = <code>VersionGuid</code>, <code>requestId</code>/<code>transactionId</code> as idempotency keys. <code>ModelDelta</code> (plugin → engine, one committed transaction) · <code>RerouteRequest</code> → <code>RerouteResponse</code> (sync, below) · <code>RoutingProposal</code> inside a <code>ChangeImpact</code> (push) · <code>ProposalDecision</code> (accept/reject with the read-set, plus the created element ids) · <code>Error {code: NO_ROUTE | STALE_VERSION | INVALID_INPUT, message, details}</code>.</p>
+    <p><b>Delegation.</b> <i>Plugin (hers):</i> event capture and filtering, delta extraction and unit conversion, the overlay, accept = <code>Duct</code> elements + <code>NewElbowFitting</code> per <code>fittings[]</code>, echo suppression, the outbox. <i>Engine (mine):</i> gateway, twin, router, validator, persistence, push. <i>Shared:</i> the schemas, the example fixtures, a contract test both CIs run, and a <b>mock engine</b> (static JSON from <code>schema/examples/</code>) so the plugin is built and demoed before the engine exists.</p>
+  </div>
+  <div class="json keep">
+<pre>// RerouteRequest (trimmed)
+{ "requestId": "req-01HZX4M2Q9", "projectId": "prj-7f2a",
+  "run": { "id": "duct-1", "systemType": "duct",
+           "start": [2.0,5.0,2.9], "end": [7.0,5.0,2.9],
+           "targetElementIds": ["MEP-L03:7b1c…"], "size": "400x300" },
+  "constraints": { "clearance_m": 0.15, "bendAngles": [45,90],
+                   "minStraight_m": 0.30, "soffitZ": 3.2 },
+  "obstacles": [{ "id": "STR-L03:0a1b…", "versionGuid": "0c2f…",
+                  "bbox": { "min": [4.0,0,2.6], "max": [4.6,10,3.2] } }] }</pre>
+<pre>// RerouteResponse (trimmed) — the script's own output
+{ "requestId": "req-01HZX4M2Q9", "status": "ok", "side": "under",
+  "waypoints": [[2,5,2.9],[3.4,5,2.9],[3.85,5,2.45],
+                [4.75,5,2.45],[5.2,5,2.9],[7,5,2.9]],
+  "fittings": [{ "at": [3.4,5,2.9], "angleDeg": 45 }, … ×4],
+  "metrics": { "length_m": 5.373, "added_m": 0.373, "bends": 4,
+               "min_clearance_m": 0.15 },
+  "validation": { "passed": true, "rulesetVersion": "1.0" },
+  "readSet": { "STR-L03:0a1b…": "0c2f…", "MEP-L03:7b1c…": "9a8b…" },
+  "candidates": [{ "side": "under", "feasible": true, "cost_m": 1.373 },
+    { "side": "over", "feasible": false, "reason": "SOFFIT_TOO_LOW" }] }</pre>
+  </div>
+</section>
+
+<section class="appendix">
+  <h2><span>A</span>The router as it runs — <code>routing/reroute.py</code>, the routing half (geometry helpers and <code>validate.py</code> are in the repository)</h2>
+<pre>__CODE__</pre>
+</section>
+</body>
+</html>

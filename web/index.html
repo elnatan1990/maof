@@ -1,0 +1,957 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--ARTIFACT-START-->
+<title>MEP Coordination Spike</title>
+<meta name="description" content="Design and algorithmic spike for real-time MEP coordination: a deterministic reroute around a beam, the Revit-to-cloud round trip, and an AI safety gate. Companion to the written answer.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: an engineering document with one live instrument at the top. A sticky section rail, a
+   two-column scene (viewport + controls) that stacks on a phone, then the three written sections
+   at reading width with their diagrams full-bleed inside the column. */
+:root {
+  --bg: #f6f7f5;            /* cool-warm paper, slightly off-white */
+  --surface: #ffffff;
+  --surface-2: #eef1ee;
+  --fg: #122033;            /* ink: deep blue-black */
+  --muted: #55657a;
+  --line: #d6dce3;
+  --accent: #0f7c86;        /* teal: the engine's colour */
+  --accent-ink: #0b5f67;
+  --accent-soft: #e3f2f3;
+  --beam: #9aa5b4;
+  --envelope: #e8871e;
+  --clash: #c8321f;
+  --route: #1f9d55;
+  --warn-soft: #fff3e3;
+  --ok-soft: #e6f6ec;
+  --bad-soft: #fde8e5;
+  --font-display: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
+  --scene-bg: #e9ecef;
+  --scene-grid: #b9c1cb;
+  --scene-grid-2: #d4d9df;
+  --shadow: 0 1px 2px rgba(18, 32, 51, .06), 0 8px 24px rgba(18, 32, 51, .06);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1520; --surface: #14202e; --surface-2: #1b2938; --fg: #e4ebf3; --muted: #93a3b6; --line: #2a3a4d;
+    --accent: #3fb7c2; --accent-ink: #7fd3db; --accent-soft: #123a40; --beam: #5f6c7c; --envelope: #f0a04a;
+    --clash: #ef6a58; --route: #3fcf7e; --warn-soft: #3a2a14; --ok-soft: #10301f; --bad-soft: #3a1a16;
+    --scene-bg: #111a26; --scene-grid: #34465a; --scene-grid-2: #223243;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1520; --surface: #14202e; --surface-2: #1b2938; --fg: #e4ebf3; --muted: #93a3b6; --line: #2a3a4d;
+  --accent: #3fb7c2; --accent-ink: #7fd3db; --accent-soft: #123a40; --beam: #5f6c7c; --envelope: #f0a04a;
+  --clash: #ef6a58; --route: #3fcf7e; --warn-soft: #3a2a14; --ok-soft: #10301f; --bad-soft: #3a1a16;
+  --scene-bg: #111a26; --scene-grid: #34465a; --scene-grid-2: #223243;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { animation: none !important; transition: none !important; } }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+a { color: var(--accent-ink); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:hover { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+code, pre, .mono { font-family: var(--font-mono); font-size: .92em; }
+pre { margin: 0; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto; line-height: 1.5; font-size: 13px; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(30px, 4.6vw, 46px); font-weight: 700; letter-spacing: -.01em; }
+h2 { font-size: clamp(22px, 2.8vw, 28px); font-weight: 700; letter-spacing: -.005em; }
+h3 { font-size: 17px; font-weight: 600; }
+p { margin: 0; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.muted { color: var(--muted); }
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* rail */
+.rail { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 9; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.rail .wrap { display: flex; align-items: center; gap: 18px; height: 52px; }
+.rail .brand { font-weight: 700; font-size: 14px; white-space: nowrap; }
+.rail nav { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; }
+.rail nav::-webkit-scrollbar { display: none; }
+.rail nav a { white-space: nowrap; font-size: 13px; font-weight: 500; color: var(--muted); text-decoration: none; padding: 6px 10px; border-radius: 999px; }
+.rail nav a:hover, .rail nav a[aria-current="true"] { color: var(--fg); background: var(--surface-2); }
+.rail .cta { font-size: 13px; font-weight: 600; color: var(--accent-ink); text-decoration: none; white-space: nowrap; }
+
+/* hero */
+.hero { padding-block: 44px 24px; }
+.hero .grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 32px; align-items: end; }
+.hero .lede { font-size: 18px; color: var(--muted); max-width: 62ch; margin-top: 14px; }
+.hero .author { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 14px; }
+.hero .author b { font-weight: 600; }
+.links { display: flex; flex-wrap: wrap; gap: 10px; }
+.chip { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); text-decoration: none; font-size: 14px; font-weight: 500; }
+.chip:hover { border-color: var(--accent); color: var(--accent-ink); }
+.chip.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.chip.primary:hover { color: #fff; filter: brightness(1.05); }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.fact { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.fact .v { font-family: var(--font-display); font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+.fact .k { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+/* scene */
+.scene-section { padding-block: 18px 40px; }
+.scene { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); gap: 18px; }
+.viewport { position: relative; background: var(--scene-bg); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; aspect-ratio: 16 / 10; max-width: 100%; box-shadow: var(--shadow); }
+.viewport canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.viewport .cams { position: absolute; left: 12px; top: 12px; display: flex; gap: 6px; }
+.viewport .legend { position: absolute; right: 12px; bottom: 12px; display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12px; background: color-mix(in srgb, var(--surface) 85%, transparent); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.viewport .status { position: absolute; left: 12px; bottom: 12px; font-size: 13px; font-weight: 600; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); }
+.viewport .status.ok { background: var(--ok-soft); border-color: var(--route); }
+.viewport .status.bad { background: var(--bad-soft); border-color: var(--clash); }
+.viewport .status.warn { background: var(--warn-soft); border-color: var(--envelope); }
+.viewport .nothree { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
+.btn { font: inherit; font-size: 13px; font-weight: 600; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.small { padding: 5px 9px; font-size: 12px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.panel h3 { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ctl { display: grid; gap: 6px; }
+.ctl label { font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
+.ctl label output { color: var(--accent-ink); font-family: var(--font-mono); font-weight: 500; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { font: inherit; font-size: 13px; font-weight: 500; padding: 6px 12px; border: 0; background: var(--surface); color: var(--fg); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+.check { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; }
+.readout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.readout .r { background: var(--surface-2); border-radius: 8px; padding: 8px 10px; }
+.readout .r .v { font-family: var(--font-display); font-weight: 700; font-size: 18px; }
+.readout .r .k { font-size: 11px; color: var(--muted); }
+.wp { width: 100%; border-collapse: collapse; font-size: 12.5px; font-family: var(--font-mono); }
+.wp td, .wp th { padding: 4px 6px; border-bottom: 1px solid var(--line); text-align: right; }
+.wp th { font-family: var(--font-body); font-weight: 600; color: var(--muted); text-align: right; }
+.wp td:first-child, .wp th:first-child { text-align: left; font-family: var(--font-body); }
+.cands { display: grid; gap: 4px; font-size: 12.5px; }
+.cands div { display: flex; justify-content: space-between; gap: 8px; padding: 4px 8px; border-radius: 6px; background: var(--surface-2); }
+.cands .ok { border-left: 3px solid var(--route); }
+.cands .no { border-left: 3px solid var(--line); color: var(--muted); }
+.parity { font-size: 12.5px; padding: 8px 10px; border-radius: 8px; background: var(--ok-soft); border: 1px solid var(--route); }
+.parity.bad { background: var(--bad-soft); border-color: var(--clash); }
+
+/* sections */
+section.doc { padding-block: 36px; border-top: 1px solid var(--line); }
+section.doc .head { display: grid; gap: 8px; margin-bottom: 22px; }
+.prose { max-width: 74ch; display: grid; gap: 14px; }
+.prose li { margin-bottom: 6px; }
+.prose ol, .prose ul { margin: 0; padding-left: 22px; }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
+.callout { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 12px 16px; border-radius: 0 10px 10px 0; }
+.callout b { color: var(--accent-ink); }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 22px 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 6px; align-content: start; }
+.card.chosen { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.card .t { font-weight: 700; }
+.card .lat { font-family: var(--font-mono); font-size: 13px; color: var(--accent-ink); }
+.card .d { font-size: 13.5px; color: var(--muted); }
+.fig { margin: 22px 0; background: #ffffff; border: 1px solid var(--line); border-radius: 12px; padding: 8px; overflow-x: auto; }
+.fig svg { display: block; width: 100%; height: auto; min-width: 640px; }
+.fig figcaption { font-size: 13px; color: var(--muted); padding: 8px 8px 4px; }
+table.t { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.t th, table.t td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.t th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.tscroll { overflow-x: auto; margin: 18px 0; }
+.budget { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0; }
+.budget span { font-family: var(--font-mono); font-size: 12.5px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+.budget span.sum { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+.budget span.ext { background: var(--warn-soft); border-color: var(--envelope); }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.tabs button { font: inherit; font-size: 13px; font-weight: 500; padding: 6px 12px; border-radius: 8px 8px 0 0; border: 1px solid var(--line); border-bottom: 0; background: var(--surface-2); color: var(--muted); cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--fg); font-weight: 600; }
+.tabpanel pre { border-radius: 0 8px 8px 8px; max-height: 420px; }
+.gate-demo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 16px; margin: 18px 0; }
+.gate-demo .choices { display: grid; gap: 8px; }
+.gate-demo .choices button { text-align: left; font: inherit; font-size: 14px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
+.gate-demo .choices button[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.gate-demo .choices small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.verdict { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+.verdict .badge { display: inline-block; font-weight: 700; padding: 4px 10px; border-radius: 999px; font-size: 13px; }
+.badge.accepted { background: var(--ok-soft); color: var(--route); }
+.badge.repaired { background: var(--warn-soft); color: var(--envelope); }
+.badge.fallback { background: var(--bad-soft); color: var(--clash); }
+.verdict ul { margin: 0; padding-left: 18px; font-size: 13.5px; }
+.verdict .mono { font-size: 12.5px; white-space: pre-wrap; word-break: break-word; }
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; margin-top: 18px; }
+.split .box { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+.split .box h3 { margin-bottom: 8px; }
+.split ul { margin: 0; padding-left: 18px; font-size: 14px; }
+footer { border-top: 1px solid var(--line); padding-block: 28px 40px; font-size: 14px; color: var(--muted); }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: space-between; }
+.pkt { fill: var(--accent); stroke: #fff; stroke-width: 2; }
+
+@media (max-width: 900px) {
+  .hero .grid, .scene, .cols, .gate-demo, .split { grid-template-columns: minmax(0, 1fr); }
+  .facts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .rail .brand { display: none; }
+}
+@media (max-width: 480px) {
+  .facts { gap: 6px; }
+  .fact { padding: 10px 10px; }
+  .fact .v { font-size: 17px; }
+  .fact .k { font-size: 11px; }
+  .readout { grid-template-columns: 1fr 1fr; }
+  .viewport { aspect-ratio: 4 / 3; }
+  .viewport .legend { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="rail">
+  <div class="wrap">
+    <span class="brand">MEP Coordination Spike</span>
+    <nav aria-label="Sections">
+      <a href="#scene">Scenario</a>
+      <a href="#routing">1 · Routing</a>
+      <a href="#realtime">2 · Real-time</a>
+      <a href="#gate">3 · Safety gate &amp; API</a>
+    </nav>
+    <a class="cta" href="https://github.com/elnatan1990/maof" target="_blank" rel="noopener">Repository ↗</a>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap grid">
+    <div>
+      <div class="eyebrow">Design &amp; algorithmic spike · take-home answer</div>
+      <h1 style="margin-top:8px">Real-time MEP coordination: a duct, a beam, and a 40 cm move</h1>
+      <p class="lede">A deterministic line-probe router that is valid by construction, a Revit-to-cloud round trip built on deltas instead of models, and an AI gate that lets a model rank routes but never draw them.</p>
+      <div class="author"><b>Elnatan Davidovitch</b><span class="muted">elnatan1990@gmail.com</span><span class="muted">050-6998223</span><a href="https://www.linkedin.com/in/elndav" target="_blank" rel="noopener">linkedin.com/in/elndav</a></div>
+      <div class="links" style="margin-top:18px">
+        <a class="chip primary" href="MEP-Coordination-Spike.pdf" target="_blank" rel="noopener">Written answer (PDF)</a>
+        <a class="chip" href="https://github.com/elnatan1990/maof" target="_blank" rel="noopener">Code, tests, schemas</a>
+        <a class="chip" href="#scene">Move the beam ↓</a>
+      </div>
+    </div>
+    <div class="facts" aria-label="Result at a glance">
+      <div class="fact"><div class="v tabular" id="fact-len">5.373 m</div><div class="k">rerouted length (+0.373 m)</div></div>
+      <div class="fact"><div class="v tabular" id="fact-bends">4 × 45°</div><div class="k">fittings, clean offsets</div></div>
+      <div class="fact"><div class="v tabular" id="fact-clear">0.150 m</div><div class="k">clearance kept, measured</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="scene" class="scene-section">
+  <div class="wrap">
+    <div class="eyebrow" style="margin-bottom:10px">Scenario · ceiling plenum, section at Y = 5 m · drag to orbit, wheel to zoom</div>
+    <div class="scene">
+      <div class="viewport" id="viewport">
+        <canvas id="c" aria-label="3-D view of the beam, its clearance envelope, the original duct and the rerouted duct"></canvas>
+        <div class="cams">
+          <button class="btn small" data-cam="iso">Iso</button>
+          <button class="btn small" data-cam="side">Side (XZ)</button>
+          <button class="btn small" data-cam="top">Top</button>
+        </div>
+        <div class="status ok" id="status">OK · under the beam</div>
+        <div class="legend"><span><i style="background:var(--beam)"></i>beam</span><span><i style="background:var(--envelope)"></i>clearance envelope</span><span><i style="background:var(--clash)"></i>original run</span><span><i style="background:var(--route)"></i>rerouted</span></div>
+      </div>
+      <div class="panel">
+        <h3>Inputs <button class="btn small" id="play">▶ Play the 40 cm move</button></h3>
+        <div class="ctl"><label for="beamdx">Move the beam in X <output id="beamdx-out">+0.00 m</output></label><input type="range" id="beamdx" min="-1" max="1" step="0.05" value="0"></div>
+        <div class="ctl"><label for="clear">Clearance <output id="clear-out">15 cm</output></label><input type="range" id="clear" min="0" max="50" step="1" value="15"></div>
+        <div class="ctl"><label>Offset style</label><div class="seg" id="bend"><button aria-pressed="true" data-v="45">45°</button><button aria-pressed="false" data-v="90">90°</button></div></div>
+        <div class="ctl"><label>Side</label><div class="seg" id="side"><button aria-pressed="true" data-v="auto">auto</button><button aria-pressed="false" data-v="under">under</button><button aria-pressed="false" data-v="over">over</button></div></div>
+        <div class="ctl"><label>Duct</label><div class="seg" id="duct"><button aria-pressed="true" data-v="line">centre-line (the exercise)</button><button aria-pressed="false" data-v="real">400×300 insulated</button></div></div>
+        <div class="ctl"><label class="check"><input type="checkbox" id="soffit" checked> Slab soffit at the beam top (3.20)</label></div>
+        <div class="ctl"><label class="check"><input type="checkbox" id="ceil-on"> Suspended ceiling known at <output id="ceil-out">2.40 m</output></label><input type="range" id="ceil" min="2.0" max="3.0" step="0.05" value="2.40" disabled></div>
+        <div class="readout" aria-live="polite">
+          <div class="r"><div class="v tabular" id="r-len">—</div><div class="k">length · added</div></div>
+          <div class="r"><div class="v tabular" id="r-bends">—</div><div class="k">fittings</div></div>
+          <div class="r"><div class="v tabular" id="r-clear">—</div><div class="k">min clearance (duct surface)</div></div>
+          <div class="r"><div class="v tabular" id="r-time">—</div><div class="k">compute time, this browser</div></div>
+        </div>
+        <table class="wp" aria-label="Waypoints"><thead><tr><th>point</th><th>x</th><th>y</th><th>z</th></tr></thead><tbody id="wp"></tbody></table>
+        <div class="cands" id="cands"></div>
+        <div class="parity" id="parity">Checking the JavaScript port against the Python output…</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="routing" class="doc">
+  <div class="wrap">
+    <div class="head"><div class="eyebrow">Section 1</div><h2>Spatial routing: a deterministic line-probe router, validator-last</h2></div>
+    <div class="prose">
+      <p><b>Representation.</b> Obstacles are axis-aligned boxes inflated by <em>clearance + the duct's half-extent in the bend plane</em>: a conservative Minkowski sum (a box, not a rounded box). A 45° diagonal that leaves an inflated corner keeps margin·√2 ≈ 0.21 m from the real corner, so the box is safe for diagonals too. Everything is snapped to and compared at millimetres, so "exactly 15 cm" is a clean pass rather than a rounding accident.</p>
+      <p><b>Why a geometric offset and not a search.</b> Ducts are axis-aligned with 45°/90° fittings, and a moved beam is one blocker on a straight run. For that case an analytic line probe (the Hightower / Mikami–Tabuchi family of routers) is exact, deterministic and sub-millisecond. Every candidate side carries an explicit feasibility test, and when none passes the answer is <code>NO_ROUTE</code> with a reason the platform turns into a coordination issue for structural: a sleeve through the beam, a local bulkhead, or moving the beam. A coordination tool has to say <em>why</em> there is no route.</p>
+      <div class="callout"><b>Feasibility, under the beam:</b> <code>z = beam_bottom − clearance − h</code>, feasible iff <code>z − h − c_ceiling ≥ Z_c</code>. Try it above: switch to the 400×300 duct and turn the ceiling on at 2.40 m. The real duct's bottom sits at 2.07 m, so the route is only feasible with the ceiling below 2.05 m.</div>
+    </div>
+    <div class="cards">
+      <div class="card chosen"><div class="t">Geometric offset (line probe)</div><div class="lat">&lt; 1 ms · deterministic</div><div class="d">Chosen for the one-blocker case. 45°/90° fittings by construction, exact clearance, stable ties. One obstacle per probe.</div></div>
+      <div class="card"><div class="t">Sparse orthogonal graph + A*</div><div class="lat">1–30 ms (est.)</div><div class="d">The generalisation for many obstacles: nodes only at inflated face coordinates, state = (node, direction) with a turn penalty, then a chamfer pass turns Z-steps into 45° offsets.</div></div>
+      <div class="card"><div class="t">A* on a 5 cm voxel grid</div><div class="lat">50 ms – 2 s (est.)</div><div class="d">800k voxels per 10 × 10 × 1 m zone; staircase paths need smoothing; resolution fights clearance accuracy; turn cost needs direction state.</div></div>
+      <div class="card"><div class="t">3-D visibility graph</div><div class="lat">ms · arbitrary angles</div><div class="d">Shortest path among 3-D polyhedra is NP-hard; the vertex graph is a heuristic, and its angles are not duct fittings.</div></div>
+      <div class="card"><div class="t">RRT*</div><div class="lat">100 ms – s · sampled</div><div class="d">Non-deterministic, needs smoothing, built for high-DOF kinematics. Not for ducts.</div></div>
+    </div>
+    <figure class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 290" font-family="IBM Plex Sans, Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" role="img" aria-label="Cross-section at Y = 5 m: the beam, its 15 cm clearance envelope, the original duct and the rerouted duct">
+  <defs>
+    <pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#94a3b8" stroke-width="1"/></pattern>
+    <marker id="dim" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#475569"/></marker>
+  </defs>
+  <rect width="840" height="290" rx="10" fill="#ffffff"/>
+  <rect x="60" y="40" width="720" height="24" fill="url(#hatch)" opacity="0.8"/>
+  <text x="66" y="35" fill="#475569" font-size="11">slab · soffit Z = 3.20 = beam top → routing over the beam is infeasible</text>
+  <rect x="342" y="46" width="108" height="108" fill="#f97316" fill-opacity="0.12" stroke="#f97316" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="516" y="140" fill="#c2410c" font-size="11">clearance envelope</text>
+  <text x="516" y="154" fill="#c2410c" font-size="11">(beam + 0.15 m)</text>
+  <rect x="360" y="64" width="72" height="72" fill="#cbd5e1" stroke="#64748b" stroke-width="1.5"/>
+  <text x="396" y="96" text-anchor="middle" fill="#334155" font-size="11" font-weight="600">beam</text>
+  <text x="396" y="110" text-anchor="middle" fill="#475569" font-size="10">0.6 × 0.6 m</text>
+  <line x1="120" y1="100" x2="720" y2="100" stroke="#dc2626" stroke-width="3" stroke-dasharray="8 6" opacity="0.9"/>
+  <text x="600" y="92" fill="#b91c1c" font-size="11">original run (clashes)</text>
+  <polyline points="120,100 288,100 342,154 450,154 504,100 720,100" fill="none" stroke="#16a34a" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+  <text x="600" y="120" fill="#15803d" font-size="11" font-weight="600">rerouted · 5.373 m · 4 × 45°</text>
+  <g fill="#ffffff" stroke="#15803d" stroke-width="2.5"><circle cx="120" cy="100" r="5"/><circle cx="288" cy="100" r="5"/><circle cx="342" cy="154" r="5"/><circle cx="450" cy="154" r="5"/><circle cx="504" cy="100" r="5"/><circle cx="720" cy="100" r="5"/></g>
+  <g fill="#0f172a" font-size="11" font-weight="600"><text x="112" y="88">A (2.0, 2.90)</text><text x="236" y="88">P1 (3.40, 2.90)</text><text x="300" y="176">P2 (3.85, 2.45)</text><text x="414" y="176">P3 (4.75, 2.45)</text><text x="494" y="88">P4 (5.20, 2.90)</text><text x="700" y="88">B (7.0, 2.90)</text></g>
+  <g stroke="#475569" stroke-width="1" fill="#475569" font-size="10.5">
+    <line x1="470" y1="136" x2="470" y2="154" marker-start="url(#dim)" marker-end="url(#dim)"/><text x="476" y="149" stroke="none">0.15 m</text>
+    <line x1="262" y1="100" x2="262" y2="154" marker-start="url(#dim)" marker-end="url(#dim)"/><text x="214" y="131" stroke="none">0.45 m</text>
+    <line x1="342" y1="206" x2="450" y2="206" marker-start="url(#dim)" marker-end="url(#dim)"/><text x="376" y="220" stroke="none">0.90 m</text>
+    <line x1="315" y1="127" x2="360" y2="136" stroke-dasharray="2 2"/><line x1="315" y1="127" x2="300" y2="186" stroke-dasharray="2 2"/><text x="130" y="196" stroke="none">0.212 m from the diagonal to the beam corner</text>
+  </g>
+  <g stroke="#cbd5e1" stroke-width="1"><line x1="60" y1="232" x2="780" y2="232"/><line x1="60" y1="40" x2="60" y2="232"/></g>
+  <g fill="#64748b" font-size="10.5" text-anchor="middle"><text x="120" y="247">2</text><text x="240" y="247">3</text><text x="360" y="247">4</text><text x="480" y="247">5</text><text x="600" y="247">6</text><text x="720" y="247">7</text><text x="420" y="266">X (m) — section at Y = 5.0</text></g>
+  <g fill="#64748b" font-size="10.5" text-anchor="end"><text x="54" y="68">3.2</text><text x="54" y="104">2.9</text><text x="54" y="140">2.6</text><text x="54" y="158">2.45</text><text x="54" y="212">2.0</text><text x="54" y="44">Z (m)</text></g>
+</svg><figcaption>The exercise as given: inflated box X ∈ [3.85, 4.75], Z ∈ [2.45, 3.35]. Over is infeasible (soffit), lateral is outside the zone (the beam spans all of Y), so the route goes under: 5.373 m (+7.5 %), four 45° fittings. The 90° variant is 5.90 m (+18 %) for the same four fittings. A two-bend "V" would need 11–14° legs and passes 0.09 m from the beam.</figcaption></figure>
+    <div class="cols">
+      <div>
+        <h3 style="margin-bottom:8px">The whole algorithm (Python in the repository, JavaScript on this page)</h3>
+<pre>reroute(run, obstacles, c):
+    box = first obstacle whose inflated box the straight run penetrates
+    if box is None: return straight
+    for side in (under, over, left, right):        # fixed order = stable tie-break
+        inf    = box.inflated(c.clearance + run.section.half_in_plane(side))
+        target = inf.face(side);  d = |target - run.level|
+        lead   = d if c.bend == 45 else 0
+        pts    = [A, A.at(inf.entry - lead), (inf.entry, target),
+                  (inf.exit, target), B.at(inf.exit + lead), B]
+        if not feasible(side, target, ceiling, soffit, zone,
+                        other_obstacles, min_straight): note reason; continue
+        cost[side] = length(pts) - |AB| + 0.25 * bends(pts)
+    best = argmin(cost) or NO_ROUTE(reason of the preferred side)
+    assert validate(best.pts) == []                # the gate's rules, on ourselves</pre>
+      </div>
+      <div class="prose">
+        <p><b>Cost.</b> Added length plus 0.25 m per fitting (a fitting costs a pressure drop and a hanger, not only duct). Ties break in the order under, over, left, right, so the same input always gives the same route; a deterministic engine is what makes the audit record in section 3 meaningful.</p>
+        <p><b>Gravity systems.</b> A drain may never rise, so "over" is refused outright and a route under the beam is returned as <code>needs_review</code>: the drop propagates downstream and the whole run has to be re-sloped at ≥ 1 %. The proposal lists the affected elements rather than pretending the problem is local.</p>
+        <p><b>With more time.</b> The second tier runs only when the probe meets a second obstacle: a sparse orthogonal graph on the inflated face coordinates, A* with a turn penalty, and a deterministic chamfer pass so both tiers emit the same fitting style. Both end in the same validator.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="realtime" class="doc">
+  <div class="wrap">
+    <div class="head"><div class="eyebrow">Section 2</div><h2>Real-time data flow: a 40 cm beam move, Revit-native</h2></div>
+    <figure class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 340" font-family="IBM Plex Sans, Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" role="img" aria-label="End-to-end pipeline: Revit add-in, WebSocket gateway, NATS JetStream, spatial engine, push to the engineer's viewport and to the architect" id="pipe">
+  <defs><marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#0f7c86"/></marker><marker id="arrgrey" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#94a3b8"/></marker></defs>
+  <rect width="1080" height="340" rx="10" fill="#ffffff"/>
+  <g><rect x="14" y="60" width="196" height="118" rx="10" fill="#f1f5f9" stroke="#0f172a" stroke-width="1.5"/><text x="112" y="82" text-anchor="middle" font-weight="700" fill="#0f172a">Architect · Revit add-in</text><text x="26" y="102" fill="#334155" font-size="11">DocumentChanged → ModelDelta</text><text x="26" y="118" fill="#334155" font-size="11">1 transaction = 1 delta, &lt; 1 KB</text><text x="26" y="134" fill="#334155" font-size="11">feet → m · {modelId}:{UniqueId}</text><text x="26" y="150" fill="#334155" font-size="11">VersionGuid · echo suppression</text><text x="26" y="166" fill="#334155" font-size="11">outbox, replay on reconnect</text></g>
+  <line x1="210" y1="119" x2="252" y2="119" stroke="#0f7c86" stroke-width="2" marker-end="url(#arr)"/><text x="231" y="134" text-anchor="middle" fill="#64748b" font-size="10">20–60 ms</text>
+  <g><rect x="254" y="64" width="150" height="110" rx="10" fill="#ffffff" stroke="#0f7c86" stroke-width="1.5"/><text x="329" y="86" text-anchor="middle" font-weight="700" fill="#0f172a">Sync gateway</text><text x="266" y="106" fill="#334155" font-size="11">WebSocket, both clients</text><text x="266" y="122" fill="#334155" font-size="11">protobuf / MessagePack</text><text x="266" y="138" fill="#334155" font-size="11">project-scoped token</text><text x="266" y="154" fill="#334155" font-size="11">idempotent: transactionId</text></g>
+  <line x1="404" y1="119" x2="450" y2="119" stroke="#0f7c86" stroke-width="2" marker-end="url(#arr)"/><text x="427" y="134" text-anchor="middle" fill="#64748b" font-size="10">&lt; 10 ms</text>
+  <g><rect x="452" y="64" width="150" height="110" rx="10" fill="#ffffff" stroke="#0f7c86" stroke-width="1.5"/><text x="527" y="86" text-anchor="middle" font-weight="700" fill="#0f172a">NATS JetStream</text><text x="464" y="106" fill="#334155" font-size="11">ordered per project</text><text x="464" y="122" fill="#334155" font-size="11">durable consumers</text><text x="464" y="138" fill="#334155" font-size="11">replay from sequence</text><text x="464" y="154" fill="#334155" font-size="11">at-least-once delivery</text></g>
+  <line x1="602" y1="119" x2="648" y2="119" stroke="#0f7c86" stroke-width="2" marker-end="url(#arr)"/><text x="625" y="134" text-anchor="middle" fill="#64748b" font-size="10">&lt; 1 ms</text>
+  <g><rect x="650" y="60" width="204" height="118" rx="10" fill="#e6f3f4" stroke="#0f7c86" stroke-width="1.5"/><text x="752" y="82" text-anchor="middle" font-weight="700" fill="#0f172a">Spatial engine</text><text x="662" y="102" fill="#334155" font-size="11">twin = view of the log · R-tree</text><text x="662" y="118" fill="#334155" font-size="11">update beam O(log n) · query runs</text><text x="662" y="134" fill="#334155" font-size="11">reroute &lt; 1 ms · validate &lt; 1 ms</text><text x="662" y="150" fill="#334155" font-size="11">append RoutingProposal (log)</text><text x="662" y="166" fill="#334155" font-size="11">bundle: ChangeImpact{proposals[]}</text></g>
+  <line x1="854" y1="119" x2="900" y2="119" stroke="#0f7c86" stroke-width="2" marker-end="url(#arr)"/><text x="877" y="108" text-anchor="middle" fill="#0f7c86" font-size="10.5">push</text><text x="877" y="134" text-anchor="middle" fill="#64748b" font-size="9.5">20–60 ms</text>
+  <g><rect x="902" y="42" width="160" height="44" rx="8" fill="#f1f5f9" stroke="#0f172a" stroke-width="1.5"/><text x="982" y="60" text-anchor="middle" font-weight="700" fill="#0f172a" font-size="11.5">Mech. engineer · Revit</text><text x="982" y="76" text-anchor="middle" fill="#334155" font-size="10.5">DirectContext3D overlay</text><rect x="902" y="96" width="160" height="44" rx="8" fill="#f1f5f9" stroke="#0f172a" stroke-width="1.5"/><text x="982" y="114" text-anchor="middle" font-weight="700" fill="#0f172a" font-size="11.5">Web viewer</text><text x="982" y="130" text-anchor="middle" fill="#334155" font-size="10.5">updates one mesh</text><rect x="902" y="150" width="160" height="44" rx="8" fill="#fff7ed" stroke="#f97316" stroke-width="1.5"/><text x="982" y="168" text-anchor="middle" font-weight="700" fill="#0f172a" font-size="11.5">Architect · impact</text><text x="982" y="184" text-anchor="middle" fill="#334155" font-size="10.5">"your move affects 3 runs"</text></g>
+  <path d="M982,194 L982,236 L329,236 L329,168" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#arrgrey)"/>
+  <text x="655" y="230" text-anchor="middle" fill="#475569" font-size="10.5">accept = ProposalDecision with the read-set {id: VersionGuid} · compare-and-swap on the twin · else STALE_VERSION</text>
+  <rect x="18" y="262" width="1044" height="56" rx="8" fill="#0f172a"/>
+  <text x="540" y="284" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="600">Round trip: p50 target 0.5 s · p99 target 3 s · deltas not models · overlay not edit · one impact message, not N pushes</text>
+  <text x="540" y="304" text-anchor="middle" fill="#cbd5e1" font-size="11">Not under our control: Revit regeneration after the commit (100 ms – s on a large model) and ExternalEvent idle scheduling (a modal dialog delays it)</text>
+  <path id="pktPath" d="M112,119 L329,119 L527,119 L752,119 L982,119" fill="none" stroke="none"/>
+  <circle class="pkt" id="pkt" r="7" cx="112" cy="119" opacity="0"/>
+</svg><figcaption>Press <b>Play the 40 cm move</b> above: the beam moves in the scene, the delta travels the pipeline, and the rerouted duct comes back. The numbers under the arrows are estimates for one hop; the two terms outside our control are named in the bar.</figcaption></figure>
+    <div class="budget" aria-label="Latency budget, estimates"><span>extract 5–20</span><span>upload 20–60</span><span>bus &lt; 10</span><span>index &lt; 1</span><span>route &lt; 1</span><span>validate &lt; 1</span><span>persist ~5</span><span>push 20–60</span><span>apply 10–30</span><span class="sum">p50 ≈ 0.5 s · p99 ≤ 3 s</span><span class="ext">+ Revit regen</span><span class="ext">+ ExternalEvent idle</span></div>
+    <div class="cols">
+      <div class="prose">
+        <p><b>Capture, in the plugin.</b> <code>Application.DocumentChanged</code> fires after the architect's transaction commits. Filter to geometric categories and the primary design option; compare <code>Element.VersionGuid</code> plus a bounding-box hash so parameter edits are dropped. One transaction is one <code>ModelDelta</code>, applied atomically to the twin. No debounce: a move is one transaction; coalesce only while a delta for the same element is in flight. Feet become metres through <code>UnitUtils</code>; shared coordinates through <code>ActiveProjectLocation.GetTotalTransform()</code>. Identity is <code>{modelId}:{UniqueId}</code>, version is <code>VersionGuid</code>. Our own accepted-proposal transactions are recognised by name and never echoed back.</p>
+        <p><b>Linked models.</b> The beam lives in the structural RVT, which the mechanical engineer sees as a link that updates only on reload. The twin bridges that gap: a ghost of the moved beam and the rerouted duct appear before the reload, and the proposal is re-validated against the authoritative geometry after it. <code>DocumentChanged</code> gives a <em>live preview</em> proposal; <code>DocumentSynchronizedWithCentral</code> a <em>committed</em> one.</p>
+        <p><b>Transport.</b> WebSocket with protobuf or MessagePack for both desktop and web. Revit add-ins are .NET Framework 4.8 sharing one AppDomain, where <code>Grpc.Net.Client</code> and <code>Google.Protobuf</code> clash with other vendors' add-ins and HTTP/2 bidirectional streaming needs WinHttp on Windows 11; grpc-web has no client streaming. gRPC stays service-to-service inside the cloud.</p>
+      </div>
+      <div class="prose">
+        <p><b>Cloud.</b> Gateway with project-scoped tokens, then NATS JetStream partitioned by project (a zone is a fan-out concern, not an ordering key), then the spatial engine. The twin is a materialised view of the event log: bounding volumes and centre-lines, about 100 bytes per element, 50k elements ≈ 5 MB, rebuilt from the log on failover. Update the beam in O(log n), query the runs intersecting old ∪ new inflated boxes, reroute, validate, append a <code>RoutingProposal</code>. At-least-once delivery with an idempotent consumer keyed by (id, VersionGuid). One beam affecting 200 runs becomes one <code>ChangeImpact</code>, pushed to the mechanical engineer and to the architect: "your move affects 3 runs" is the most valuable real-time signal in the product.</p>
+        <p><b>Apply, in the plugin.</b> An <code>ExternalEvent</code> draws the proposal as a DirectContext3D overlay; nothing is edited until the engineer accepts. Accept is a compare-and-swap on the proposal's read-set <code>{elementId: VersionGuid}</code> (beam, duct, other obstacles); otherwise <code>STALE_VERSION</code> and a fresh request. On reconnect the plugin replays its outbox from the last acknowledged sequence, or takes a zone snapshot if the log was compacted.</p>
+        <p><b>Why nothing freezes.</b> Deltas under 1 KB, never models of 100 MB to 2 GB. The heavy model never leaves the client. An overlay, not an edit. One impact message, not N pushes. An incremental index.</p>
+      </div>
+    </div>
+    <div class="tscroll"><table class="t"><thead><tr><th>payload</th><th>size</th><th>what it is</th></tr></thead><tbody>
+      <tr><td><code>ModelDelta</code> for the moved beam</td><td class="tabular">≈ 330 B</td><td>id, VersionGuid, category, op, new bounding box</td></tr>
+      <tr><td><code>RoutingProposal</code> for one duct run</td><td class="tabular">≈ 1.2 KB</td><td>6 waypoints, 4 fittings, metrics, validation, read-set</td></tr>
+      <tr><td>zone snapshot, 5,000 elements</td><td class="tabular">≈ 500 KB</td><td>bounding volumes only, sent once on a cold reconnect</td></tr>
+      <tr><td>the Revit model itself</td><td class="tabular">100 MB – 2 GB</td><td>never leaves the client</td></tr>
+    </tbody></table></div>
+  </div>
+</section>
+
+<section id="gate" class="doc">
+  <div class="wrap">
+    <div class="head"><div class="eyebrow">Section 3</div><h2>AI safety gate and the API contract</h2></div>
+    <div class="prose">
+      <p><b>The guarantee comes from what the model may output.</b> The pattern model emits cost weights or a ranking over deterministic candidates, never geometry, so even its best output is a route the router built and validated. In the weaker mode, candidate waypoints in a strict JSON schema, the same <code>validate()</code> runs: clearance with the duct body, ceiling clearance measured on the duct bottom, gravity slope (monotonic, ≥ 1 %), bends in {45°, 90°}, minimum straight, soffit, zone, endpoints. A failure triggers a bounded deterministic repair (push each waypoint out through the nearest inflated face, three passes) and a re-check; if that still fails, the deterministic route is used. Every decision writes an audit record. Shadow mode first, a kill switch, and property tests: random obstacles plus random perturbations give zero accepted violations.</p>
+    </div>
+    <figure class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 320" font-family="IBM Plex Sans, Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" role="img" aria-label="AI safety gate: the model emits weights or candidates, the deterministic validator decides, repair is bounded, fallback is the deterministic route, every decision is audited">
+  <defs><marker id="ga" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#0f7c86"/></marker><marker id="gok" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#16a34a"/></marker><marker id="gbad" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#dc2626"/></marker></defs>
+  <rect width="1080" height="320" rx="10" fill="#ffffff"/>
+  <rect x="18" y="40" width="200" height="150" rx="10" fill="#f1f5f9" stroke="#0f172a" stroke-width="1.5"/><text x="118" y="62" text-anchor="middle" font-weight="700" fill="#0f172a">Pattern model (ML)</text><text x="30" y="84" fill="#334155" font-size="11" font-weight="600">A · cost weights / ranking</text><text x="30" y="99" fill="#334155" font-size="11">over deterministic candidates</text><text x="30" y="113" fill="#15803d" font-size="11" font-weight="600">→ never geometry (primary)</text><text x="30" y="137" fill="#334155" font-size="11" font-weight="600">B · candidate waypoints</text><text x="30" y="152" fill="#334155" font-size="11">strict JSON schema, else rejected</text><text x="30" y="167" fill="#334155" font-size="11">untrusted → validated below</text>
+  <line x1="218" y1="90" x2="268" y2="90" stroke="#0f7c86" stroke-width="2" marker-end="url(#ga)"/>
+  <rect x="270" y="56" width="170" height="68" rx="10" fill="#e6f3f4" stroke="#0f7c86" stroke-width="1.5"/><text x="355" y="78" text-anchor="middle" font-weight="700" fill="#0f172a">Deterministic router</text><text x="355" y="96" text-anchor="middle" fill="#334155" font-size="11">builds the candidates</text><text x="355" y="112" text-anchor="middle" fill="#334155" font-size="11">valid by construction</text>
+  <line x1="440" y1="90" x2="490" y2="90" stroke="#0f7c86" stroke-width="2" marker-end="url(#ga)"/>
+  <path d="M218,145 L470,145 L470,120 L490,120" fill="none" stroke="#0f7c86" stroke-width="2" marker-end="url(#ga)"/>
+  <rect x="492" y="40" width="230" height="150" rx="10" fill="#ffffff" stroke="#0f172a" stroke-width="1.5"/><text x="607" y="62" text-anchor="middle" font-weight="700" fill="#0f172a">validate() · ruleset v1.0</text><text x="504" y="82" fill="#334155" font-size="11">clearance, with the duct body</text><text x="504" y="97" fill="#334155" font-size="11">ceiling clearance on the duct bottom</text><text x="504" y="112" fill="#334155" font-size="11">gravity slope: monotonic, ≥ 1 %</text><text x="504" y="127" fill="#334155" font-size="11">bends ∈ {45°, 90°} · min straight</text><text x="504" y="142" fill="#334155" font-size="11">soffit · zone · endpoints</text><text x="504" y="164" fill="#0f7c86" font-size="11" font-weight="600">pure · versioned · shared with the router</text><text x="504" y="179" fill="#0f7c86" font-size="11" font-weight="600">mm precision · typed violations</text>
+  <line x1="722" y1="80" x2="772" y2="80" stroke="#16a34a" stroke-width="2" marker-end="url(#gok)"/><text x="747" y="72" text-anchor="middle" fill="#15803d" font-size="10.5">pass</text>
+  <rect x="774" y="56" width="288" height="48" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/><text x="918" y="76" text-anchor="middle" font-weight="700" fill="#14532d">Accept → RoutingProposal</text><text x="918" y="94" text-anchor="middle" fill="#166534" font-size="11">origin: ai_ranked · validation.passed = true</text>
+  <line x1="722" y1="150" x2="772" y2="150" stroke="#dc2626" stroke-width="2" marker-end="url(#gbad)"/><text x="747" y="142" text-anchor="middle" fill="#b91c1c" font-size="10.5">fail</text>
+  <rect x="774" y="124" width="150" height="52" rx="10" fill="#fff7ed" stroke="#f97316" stroke-width="1.5"/><text x="849" y="144" text-anchor="middle" font-weight="700" fill="#0f172a" font-size="11.5">Repair, bounded</text><text x="849" y="160" text-anchor="middle" fill="#334155" font-size="10.5">push out of inflated faces</text><text x="849" y="172" text-anchor="middle" fill="#334155" font-size="10.5">≤ 3 passes, validate again</text>
+  <line x1="924" y1="150" x2="962" y2="150" stroke="#dc2626" stroke-width="2" marker-end="url(#gbad)"/><text x="943" y="142" text-anchor="middle" fill="#b91c1c" font-size="10">still fails</text>
+  <rect x="964" y="124" width="98" height="52" rx="10" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/><text x="1013" y="146" text-anchor="middle" font-weight="700" fill="#7f1d1d" font-size="11.5">Fallback</text><text x="1013" y="162" text-anchor="middle" fill="#7f1d1d" font-size="10.5">deterministic route</text>
+  <rect x="18" y="212" width="1044" height="40" rx="8" fill="#0f172a"/><text x="540" y="237" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="600">Guarantee: no geometry reaches a proposal without validate() = [] — the model has no write path around it. Kill switch: AI off → deterministic only.</text>
+  <rect x="18" y="262" width="1044" height="44" rx="8" fill="#f1f5f9" stroke="#cbd5e1"/><text x="540" y="280" text-anchor="middle" fill="#334155" font-size="11">Audit record per decision: ruleset version · model version · input hash · rules passed / failed · accepted | repaired | fallback</text><text x="540" y="297" text-anchor="middle" fill="#334155" font-size="11">Shadow mode before anything is shown · property tests: random obstacles + random noise ⇒ zero accepted violations</text>
+</svg></figure>
+    <h3>Try the gate on a model's suggestion</h3>
+    <p class="muted" style="margin-top:4px;font-size:14px">The same rules that checked the route above, run in this browser on three suggestions a pattern model could make for the current scenario.</p>
+    <div class="gate-demo">
+      <div class="choices" role="group" aria-label="AI suggestions">
+        <button data-ai="valid" aria-pressed="true">A ranked copy of the router's route<small>The primary mode: the model re-weighted the candidates and picked this one. Nothing to fix.</small></button>
+        <button data-ai="corner" aria-pressed="false">"Hug the beam": 5 cm inside the envelope<small>Learned from projects where 10 cm was the rule. Violates clearance; repair pushes the waypoints out.</small></button>
+        <button data-ai="vee" aria-pressed="false">A two-bend "V" under the beam<small>Fewer fittings, so a naive cost model loves it. 11–14° legs and 0.09 m from the beam: fallback.</small></button>
+      </div>
+      <div class="verdict" id="verdict" aria-live="polite"></div>
+    </div>
+    <h3 style="margin-top:28px">The contract between the engine and the Revit plugin</h3>
+    <p class="muted" style="margin:4px 0 14px;font-size:14px">JSON Schema in <code>schema/</code>, examples in <code>schema/examples/</code>. Metres, shared coordinates, ids <code>{modelId}:{UniqueId}</code>, versions <code>VersionGuid</code>, <code>requestId</code> and <code>transactionId</code> as idempotency keys. The response below is the script's own output for the request.</p>
+    <div class="tabs" role="tablist" id="tabs">
+      <button role="tab" aria-selected="true" data-tab="delta">ModelDelta</button>
+      <button role="tab" aria-selected="false" data-tab="req">RerouteRequest</button>
+      <button role="tab" aria-selected="false" data-tab="res">RerouteResponse</button>
+      <button role="tab" aria-selected="false" data-tab="prop">RoutingProposal</button>
+      <button role="tab" aria-selected="false" data-tab="dec">ProposalDecision</button>
+      <button role="tab" aria-selected="false" data-tab="err">Error</button>
+    </div>
+    <div class="tabpanel"><pre id="tabpanel"></pre></div>
+    <div class="split">
+      <div class="box"><h3>Plugin side (hers)</h3><ul><li>Event capture and filtering (<code>DocumentChanged</code>, <code>DocumentSynchronizedWithCentral</code>)</li><li>Delta extraction, unit conversion, shared coordinates</li><li>The DirectContext3D overlay via <code>ExternalEvent</code></li><li>Accept: <code>Duct</code> elements + <code>NewElbowFitting</code> per <code>fittings[]</code>, then the created ids back in the decision</li><li>Echo suppression and the outbox</li></ul></div>
+      <div class="box"><h3>Engine side (mine)</h3><ul><li>Gateway, auth, idempotency</li><li>The twin, its index and the event log</li><li>Router, validator, safety gate</li><li>Persistence and push (<code>ChangeImpact</code>)</li><li>Shared with her: the schemas, the example fixtures, a contract test both CIs run, and a mock engine (static JSON) so the plugin is built before the engine exists</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span><b>Elnatan Davidovitch</b> · elnatan1990@gmail.com · 050-6998223 · <a href="https://www.linkedin.com/in/elndav" target="_blank" rel="noopener">linkedin.com/in/elndav</a></span>
+    <span>Companion to the written answer · <a href="https://github.com/elnatan1990/maof" target="_blank" rel="noopener">github.com/elnatan1990/maof</a> · <a href="MEP-Coordination-Spike.pdf" target="_blank" rel="noopener">PDF</a> · built after the time-box; every number here comes from <code>python -m routing</code></span>
+  </div>
+</footer>
+
+<script>
+/* ---------- the router, ported line for line from routing/reroute.py ---------- */
+const EPS = 1e-9, BEND_PENALTY = 0.25;
+const snap = v => Math.round(v * 1000) / 1000;
+const vsnap = p => p.map(snap);
+const dist = (p, q) => Math.hypot(q[0]-p[0], q[1]-p[1], q[2]-p[2]);
+const sub = (p, q) => [q[0]-p[0], q[1]-p[1], q[2]-p[2]];
+function angleDeg(u, v) {
+  const nu = Math.hypot(...u), nv = Math.hypot(...v);
+  if (nu < EPS || nv < EPS) return 0;
+  const c = Math.max(-1, Math.min(1, (u[0]*v[0]+u[1]*v[1]+u[2]*v[2]) / (nu*nv)));
+  return Math.round(Math.acos(c) * 180 / Math.PI * 10) / 10;
+}
+const box = (lo, hi) => ({ lo, hi });
+const inflated = (b, m) => box(vsnap(b.lo.map((c, i) => c - m[i])), vsnap(b.hi.map((c, i) => c + m[i])));
+const clampTo = (b, p) => p.map((c, i) => Math.min(Math.max(c, b.lo[i]), b.hi[i]));
+const distPoint = (b, p) => Math.sqrt(p.reduce((s, c, i) => s + Math.max(b.lo[i]-c, 0, c-b.hi[i]) ** 2, 0));
+function closestOnSegment(b, p, q) {
+  const at = t => p.map((c, i) => c + (q[i]-c) * t), f = t => distPoint(b, at(t));
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 80; i++) { const m1 = lo + (hi-lo)/3, m2 = hi - (hi-lo)/3; if (f(m1) <= f(m2)) hi = m2; else lo = m1; }
+  return [lo, hi, 0, 1].map(at).reduce((a, c) => distPoint(b, c) < distPoint(b, a) ? c : a);
+}
+const distSeg = (b, p, q) => distPoint(b, closestOnSegment(b, p, q));
+function penetrates(p, q, b) {
+  let t0 = 0, t1 = 1;
+  for (let i = 0; i < 3; i++) {
+    const d = q[i] - p[i];
+    if (Math.abs(d) < EPS) { if (p[i] <= b.lo[i] + EPS || p[i] >= b.hi[i] - EPS) return false; continue; }
+    let a = (b.lo[i]-p[i])/d, c = (b.hi[i]-p[i])/d; if (a > c) [a, c] = [c, a];
+    t0 = Math.max(t0, a); t1 = Math.min(t1, c); if (t1 - t0 <= EPS) return false;
+  }
+  return t1 - t0 > EPS;
+}
+const section = (w=0, h=0, ins=0, fl=0) => ({ w, h, ins, fl, hw: w/2+ins+fl, hh: h/2+ins+fl, hmax: Math.max(w/2+ins+fl, h/2+ins+fl) });
+const halfAlong = (s, axis) => axis === 2 ? s.hh : s.hw;
+function ductExtents(d, neighbours, s) {
+  const moving = [0,1,2].filter(k => Math.abs(d[k]) > EPS);
+  if (moving.length === 1 && moving[0] === 2) {
+    let plane = 0;
+    for (const n of neighbours) { const h = [0,1].filter(k => Math.abs(n[k]) > EPS); if (h.length) { plane = h[0]; break; } }
+    const e = [s.hw, s.hw, 0]; e[plane] = s.hh; return e;
+  }
+  return [0,1,2].map(k => moving.includes(k) ? (moving.length === 1 ? 0 : (moving.includes(2) ? s.hh : s.hw)) : (k === 2 ? s.hh : s.hw));
+}
+function segmentExtents(pts, i, s) {
+  const nb = []; if (i > 0) nb.push(sub(pts[i-1], pts[i])); if (i + 2 < pts.length) nb.push(sub(pts[i+1], pts[i+2]));
+  return ductExtents(sub(pts[i], pts[i+1]), nb, s);
+}
+const polyLength = pts => pts.slice(1).reduce((s, p, i) => s + dist(pts[i], p), 0);
+function fittingsOf(pts) {
+  const out = [];
+  for (let i = 1; i < pts.length - 1; i++) { const a = angleDeg(sub(pts[i-1], pts[i]), sub(pts[i], pts[i+1])); if (a >= 0.5) out.push({ at: pts[i], angle: a }); }
+  return out;
+}
+function minClearance(pts, obstacles, s) {
+  if (!obstacles.length || pts.length < 2) return null;
+  let best = null;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const e = segmentExtents(pts, i, s);
+    for (const b of obstacles) {
+      const p = closestOnSegment(b, pts[i], pts[i+1]), c = clampTo(b, p), delta = p.map((v, k) => v - c[k]);
+      const axes = [0,1,2].filter(k => Math.abs(delta[k]) > 1e-9), d = Math.hypot(...delta);
+      const clear = d - (axes.length ? Math.max(...axes.map(k => e[k])) : Math.max(...e));
+      best = best === null ? clear : Math.min(best, clear);
+    }
+  }
+  return snap(best);
+}
+const sideName = (axis, sign) => axis === 2 ? (sign < 0 ? "under" : "over") : (sign < 0 ? "left" : "right");
+function runAxis(run) { const m = [0,1,2].filter(i => Math.abs(run.end[i]-run.start[i]) > EPS); if (m.length !== 1) throw new Error("axis-aligned runs only"); return m[0]; }
+function blocker(run, obstacles, c) {
+  const a = runAxis(run), hits = [];
+  for (const b of obstacles) { const m = [0,1,2].map(i => c.clearance + (i === a ? 0 : halfAlong(run.section, i))); if (penetrates(run.start, run.end, inflated(b, m))) hits.push([b.lo[a], b]); }
+  hits.sort((x, y) => x[0] - y[0]); return hits.length ? hits[0][1] : null;
+}
+function offsetWaypoints(run, b, axisO, sign, c) {
+  const a = runAxis(run), s = run.end[a] > run.start[a] ? 1 : -1, h = halfAlong(run.section, axisO);
+  const m = [0,0,0]; m[a] = m[axisO] = c.clearance + h;
+  const inf = inflated(b, m), target = sign > 0 ? inf.hi[axisO] : inf.lo[axisO], base = run.start[axisO], d = Math.abs(target - base);
+  const entry = s > 0 ? inf.lo[a] : inf.hi[a], exit = s > 0 ? inf.hi[a] : inf.lo[a], lead = c.bend === 45 ? d : 0;
+  const at = (along, off) => { const p = run.start.slice(); p[a] = along; p[axisO] = off; return vsnap(p); };
+  return [run.start, at(entry - s*lead, base), at(entry, target), at(exit, target), at(exit + s*lead, base), run.end];
+}
+function feasibility(run, b, obstacles, axisO, sign, c, pts) {
+  const a = runAxis(run), h = halfAlong(run.section, axisO), target = pts[2][axisO];
+  if (axisO === 2 && sign > 0 && run.system === "gravity_pipe") return "GRAVITY_CANNOT_RISE";
+  if (axisO === 2 && sign < 0 && c.ceiling_z != null && target - h - c.ceiling_clearance < c.ceiling_z - EPS) return "PLENUM_TOO_SHALLOW";
+  if (axisO === 2 && sign > 0 && c.soffit_z != null && target + h + c.clearance > c.soffit_z + EPS) return "SOFFIT_TOO_LOW";
+  if (c.zone) { const hw = halfAlong(run.section, axisO); if (target - hw < c.zone.lo[axisO] - EPS || target + hw > c.zone.hi[axisO] + EPS) return "OUTSIDE_ZONE"; }
+  const s = run.end[a] > run.start[a] ? 1 : -1;
+  if (s*(pts[1][a]-run.start[a]) < c.min_straight - EPS || s*(run.end[a]-pts[4][a]) < c.min_straight - EPS) return "INSUFFICIENT_STRAIGHT";
+  for (const o of obstacles) { if (o === b) continue; const inf = inflated(o, [0,1,2].map(() => c.clearance + run.section.hmax)); for (let i = 0; i < pts.length-1; i++) if (penetrates(pts[i], pts[i+1], inf)) return "SECOND_OBSTACLE"; }
+  return "";
+}
+function reroute(run, obstacles, c) {
+  const a = runAxis(run); run = { ...run, start: vsnap(run.start), end: vsnap(run.end) };
+  const straight = dist(run.start, run.end), b = blocker(run, obstacles, c);
+  if (!b) return { status: "ok", side: "straight", waypoints: [run.start, run.end], fittings: [], length: snap(straight), added: 0, bends: 0, minClearance: minClearance([run.start, run.end], obstacles, run.section), candidates: [], notes: ["straight run is clear"] };
+  const order = [0,1,2].filter(i => i !== a).sort((x, y) => (x === 2 ? 0 : 1) - (y === 2 ? 0 : 1)), wanted = c.side === "auto" ? null : c.side, candidates = [];
+  for (const axisO of order) for (const sign of [-1, 1]) {
+    const name = sideName(axisO, sign), pts = offsetWaypoints(run, b, axisO, sign, c);
+    let reason = feasibility(run, b, obstacles, axisO, sign, c, pts);
+    if (wanted && name !== wanted) reason = reason || "NOT_REQUESTED";
+    if (reason) { candidates.push({ side: name, feasible: false, reason }); continue; }
+    const added = polyLength(pts) - straight;
+    candidates.push({ side: name, feasible: true, reason: "", cost: snap(added + BEND_PENALTY * fittingsOf(pts).length), pts });
+  }
+  const feasible = candidates.filter(k => k.feasible);
+  if (!feasible.length) { const primary = candidates.find(k => k.reason !== "NOT_REQUESTED") || candidates[0]; return { status: "no_route", reason: primary.reason, waypoints: [], fittings: [], candidates, notes: ["no feasible offset: raise a coordination issue (sleeve / bulkhead / move the beam)"] }; }
+  const best = feasible.reduce((x, k) => k.cost < x.cost ? k : x), pts = best.pts, fittings = fittingsOf(pts), notes = [];
+  let status = "ok"; if (run.system === "gravity_pipe") { status = "needs_review"; notes.push("GRAVITY_RESLOPE_DOWNSTREAM"); }
+  return { status, side: best.side, waypoints: pts, fittings, length: snap(polyLength(pts)), added: snap(polyLength(pts) - straight), bends: fittings.length, minClearance: minClearance(pts, obstacles, run.section), candidates, notes };
+}
+
+/* ---------- the validator and the gate, ported from routing/validate.py ---------- */
+function validate(waypoints, ctx) {
+  const pts = waypoints.map(vsnap), v = [];
+  if (pts.length < 2) return [{ rule: "endpoints", message: "fewer than two waypoints" }];
+  if (pts[0].join() !== vsnap(ctx.start).join()) v.push({ rule: "endpoints", message: "first waypoint is not the run start" });
+  if (pts[pts.length-1].join() !== vsnap(ctx.end).join()) v.push({ rule: "endpoints", message: "last waypoint is not the run end" });
+  for (let i = 0; i < pts.length-1; i++) {
+    const e = segmentExtents(pts, i, ctx.section), m = e.map(ek => snap(ctx.clearance + ek));
+    for (const b of ctx.obstacles) if (penetrates(pts[i], pts[i+1], inflated(b, m))) v.push({ rule: "clearance", message: `segment ${i} passes ${snap(distSeg(b, pts[i], pts[i+1])).toFixed(3)} m (centre-line) from an obstacle; the duct surface needs ${ctx.clearance.toFixed(2)} m` });
+  }
+  for (let i = 1; i < pts.length-1; i++) { const a = angleDeg(sub(pts[i-1], pts[i]), sub(pts[i], pts[i+1])); if (a >= 0.5 && ctx.allowed.every(ok => Math.abs(a-ok) > 0.5)) v.push({ rule: "bend_angle", message: `${a.toFixed(1)}° bend is not in {${ctx.allowed.join(", ")}}` }); }
+  for (let i = 0; i < pts.length-1; i++) { const d = dist(pts[i], pts[i+1]); if (d < ctx.min_straight - EPS && d > EPS) v.push({ rule: "min_straight", message: `segment ${i} is ${d.toFixed(3)} m, minimum ${ctx.min_straight.toFixed(2)} m` }); }
+  if (ctx.ceiling_z != null) { const floor = ctx.ceiling_z + ctx.section.hh + ctx.ceiling_clearance; for (const p of pts) if (p[2] < floor - EPS) v.push({ rule: "ceiling", message: `duct bottom below the ceiling line (centre ${p[2].toFixed(3)} < ${floor.toFixed(3)})` }); }
+  if (ctx.soffit_z != null) { const top = ctx.soffit_z - ctx.section.hh - ctx.clearance; for (const p of pts) if (p[2] > top + EPS) v.push({ rule: "soffit", message: `duct top too close to the slab (centre ${p[2].toFixed(3)} > ${top.toFixed(3)})` }); }
+  if (ctx.zone) for (const p of pts) if (!p.every((c, k) => c >= ctx.zone.lo[k]-EPS && c <= ctx.zone.hi[k]+EPS)) v.push({ rule: "zone", message: "waypoint outside the coordination zone" });
+  if (ctx.system === "gravity_pipe") for (let i = 0; i < pts.length-1; i++) { const p = pts[i], q = pts[i+1], horiz = Math.hypot(q[0]-p[0], q[1]-p[1]), dz = q[2]-p[2]; if (dz > EPS) v.push({ rule: "gravity_slope", message: "a gravity pipe may not rise" }); else if (horiz > EPS && -dz < ctx.min_slope*horiz - EPS) v.push({ rule: "gravity_slope", message: `slope ${(-dz/horiz*100).toFixed(2)} % below the minimum ${ctx.min_slope*100} %` }); }
+  return v;
+}
+function repair(pts, ctx, passes = 3) {
+  const boxes = ctx.obstacles.map(b => inflated(b, [0,1,2].map(() => ctx.clearance + ctx.section.hmax))); pts = pts.map(vsnap);
+  for (let pass = 0; pass < passes; pass++) {
+    let moved = false;
+    for (let i = 1; i < pts.length-1; i++) for (const b of boxes) {
+      const p = pts[i]; if (!p.every((c, k) => b.lo[k] + EPS < c && c < b.hi[k] - EPS)) continue;
+      const pushes = []; for (let k = 0; k < 3; k++) { pushes.push([p[k]-b.lo[k], k, b.lo[k]]); pushes.push([b.hi[k]-p[k], k, b.hi[k]]); }
+      pushes.sort((x, y) => x[0]-y[0] || x[1]-y[1]); const [, k, face] = pushes[0]; const q = p.slice(); q[k] = face; pts[i] = vsnap(q); moved = true;
+    }
+    if (!moved) break;
+  }
+  return pts;
+}
+function safetyGate(proposal, ctx, fallback) {
+  const before = validate(proposal, ctx);
+  if (!before.length) return { status: "accepted", waypoints: proposal.map(vsnap), before, after: [] };
+  const repaired = repair(proposal, ctx), after = validate(repaired, ctx);
+  if (!after.length) return { status: "repaired", waypoints: repaired, before, after: [] };
+  return { status: "fallback", waypoints: fallback.map(vsnap), before, after, fallbackValid: !validate(fallback, ctx).length };
+}
+
+/* ---------- state, scenario, UI ---------- */
+const BEAM0 = { lo: [4.0, 0.0, 2.6], hi: [4.6, 10.0, 3.2] };
+const ZONE = box([0, 0, 2.0], [10, 10, 3.2]);
+const state = { dx: 0, clearance: 0.15, bend: 45, side: "auto", duct: "line", soffit: true, ceilOn: false, ceil: 2.40 };
+let current = null;
+function scenario() {
+  const real = state.duct === "real";
+  const run = { id: "duct-1", start: [2, 5, real ? 2.85 : 2.9], end: [7, 5, real ? 2.85 : 2.9], system: "duct", section: real ? section(0.40, 0.30, 0.025, 0.015) : section() };
+  const beam = box([BEAM0.lo[0] + state.dx, 0, 2.6], [BEAM0.hi[0] + state.dx, 10, 3.2]);
+  const c = { clearance: state.clearance, bend: state.bend, min_straight: 0.30, ceiling_z: state.ceilOn ? state.ceil : null, ceiling_clearance: 0.02, soffit_z: state.soffit ? 3.2 : null, zone: ZONE, side: state.side };
+  return { run, obstacles: [beam], c };
+}
+const ctxOf = (run, obstacles, c) => ({ start: run.start, end: run.end, obstacles, clearance: c.clearance, section: run.section, allowed: [45, 90], min_straight: c.min_straight, ceiling_z: c.ceiling_z, ceiling_clearance: c.ceiling_clearance, soffit_z: c.soffit_z, zone: c.zone, system: run.system, min_slope: 0.01 });
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 3) => v == null ? "—" : v.toFixed(d);
+function recompute() {
+  const { run, obstacles, c } = scenario();
+  const t0 = performance.now(); const r = reroute(run, obstacles, c); const ms = performance.now() - t0;
+  current = { run, obstacles, c, r };
+  const st = $("status");
+  if (r.status === "ok") { st.className = "status ok"; st.textContent = r.side === "straight" ? "OK · the straight run is clear" : `OK · ${r.side} the beam`; }
+  else if (r.status === "no_route") { st.className = "status bad"; st.textContent = `NO_ROUTE · ${r.reason}`; }
+  else { st.className = "status warn"; st.textContent = `NEEDS_REVIEW · ${r.side}`; }
+  $("r-len").textContent = r.waypoints.length ? `${fmt(r.length)} m · +${fmt(r.added)}` : "—";
+  $("r-bends").textContent = r.waypoints.length ? (r.bends ? `${r.bends} × ${[...new Set(r.fittings.map(f => f.angle))].join("/")}°` : "none") : "—";
+  $("r-clear").textContent = r.minClearance == null ? "—" : `${fmt(r.minClearance)} m`;
+  $("r-time").textContent = ms < 1 ? `${(ms*1000).toFixed(0)} µs` : `${ms.toFixed(2)} ms`;
+  const names = ["A", "P1", "P2", "P3", "P4", "B"];
+  $("wp").innerHTML = r.waypoints.map((p, i) => `<tr><td>${r.waypoints.length === 2 ? (i ? "B" : "A") : names[i]}</td><td>${fmt(p[0])}</td><td>${fmt(p[1])}</td><td>${fmt(p[2])}</td></tr>`).join("") || `<tr><td colspan="4" class="muted">${r.notes[0]}</td></tr>`;
+  $("cands").innerHTML = r.candidates.map(k => `<div class="${k.feasible ? "ok" : "no"}"><span>${k.side}</span><span>${k.feasible ? `cost ${fmt(k.cost)} m` : k.reason}</span></div>`).join("");
+  if (window.scene3d) window.scene3d.update(current);
+  renderGate();
+}
+/* controls */
+$("beamdx").addEventListener("input", e => { state.dx = +e.target.value; $("beamdx-out").textContent = `${state.dx >= 0 ? "+" : ""}${state.dx.toFixed(2)} m`; recompute(); });
+$("clear").addEventListener("input", e => { state.clearance = +e.target.value / 100; $("clear-out").textContent = `${e.target.value} cm`; recompute(); });
+$("soffit").addEventListener("change", e => { state.soffit = e.target.checked; recompute(); });
+$("ceil-on").addEventListener("change", e => { state.ceilOn = e.target.checked; $("ceil").disabled = !state.ceilOn; recompute(); });
+$("ceil").addEventListener("input", e => { state.ceil = +e.target.value; $("ceil-out").textContent = `${state.ceil.toFixed(2)} m`; recompute(); });
+for (const [id, key, cast] of [["bend", "bend", Number], ["side", "side", String], ["duct", "duct", String]]) {
+  $(id).addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; for (const x of $(id).querySelectorAll("button")) x.setAttribute("aria-pressed", x === b ? "true" : "false"); state[key] = cast(b.dataset.v); recompute(); });
+}
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+$("play").addEventListener("click", () => {
+  const slider = $("beamdx"), from = state.dx, to = 0.4, t0 = performance.now(), dur = reduced ? 0 : 1400;
+  const step = now => { const k = dur ? Math.min(1, (now - t0) / dur) : 1, e = 1 - Math.pow(1 - k, 3); slider.value = (from + (to - from) * e).toFixed(2); slider.dispatchEvent(new Event("input")); if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+  animatePacket();
+  document.getElementById("realtime").scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+});
+function animatePacket() {
+  const path = $("pktPath"), pkt = $("pkt"); if (!path || !pkt) return;
+  const L = path.getTotalLength(), t0 = performance.now(), dur = reduced ? 0 : 2600;
+  pkt.setAttribute("opacity", "1");
+  const step = now => { const k = dur ? Math.min(1, (now - t0) / dur) : 1, p = path.getPointAtLength(L * k); pkt.setAttribute("cx", p.x); pkt.setAttribute("cy", p.y); if (k < 1) requestAnimationFrame(step); else setTimeout(() => pkt.setAttribute("opacity", "0"), 600); };
+  requestAnimationFrame(step);
+}
+/* gate demo */
+let aiChoice = "valid";
+document.querySelector(".gate-demo .choices").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; aiChoice = b.dataset.ai; for (const x of b.parentElement.querySelectorAll("button")) x.setAttribute("aria-pressed", x === b ? "true" : "false"); renderGate(); });
+function renderGate() {
+  if (!current) return; const { run, obstacles, c, r } = current; const ctx = ctxOf(run, obstacles, c), el = $("verdict");
+  if (!r.waypoints.length) { el.innerHTML = `<div><span class="badge fallback">no deterministic route</span></div><p class="muted" style="font-size:14px">With no feasible route there is nothing for a model to rank; the engine answers <code>NO_ROUTE(${r.reason})</code> and opens a coordination issue.</p>`; return; }
+  const good = r.waypoints; let proposal;
+  if (aiChoice === "valid") proposal = good.map(p => p.slice());
+  else if (aiChoice === "corner") {
+    // the same trapezoid, built 5 cm inside the clearance envelope
+    const b = obstacles[0], a = Math.max(0, state.clearance + run.section.hh - 0.05), z0 = run.start[2], zt = b.lo[2] - a, d = z0 - zt;
+    const entry = b.lo[0] - a, exit = b.hi[0] + a, lead = state.bend === 45 ? d : 0;
+    proposal = [run.start, vsnap([entry - lead, 5, z0]), vsnap([entry, 5, zt]), vsnap([exit, 5, zt]), vsnap([exit + lead, 5, z0]), run.end];
+  }
+  else { const b = obstacles[0]; proposal = [run.start, vsnap([(b.lo[0]+b.hi[0])/2, 5, b.lo[2] - state.clearance - run.section.hh]), run.end]; }
+  const d = safetyGate(proposal, ctx, good);
+  const list = vs => vs.length ? `<ul>${vs.map(v => `<li><b>${v.rule}</b> — ${v.message}</li>`).join("")}</ul>` : `<p class="muted" style="font-size:13.5px">no violations</p>`;
+  el.innerHTML = `<div><span class="badge ${d.status}">${d.status}</span></div>
+    <div><div class="eyebrow">proposal · ${proposal.length} waypoints</div><div class="mono">${proposal.map(p => `(${p.map(x => x.toFixed(2)).join(", ")})`).join(" → ")}</div></div>
+    <div><div class="eyebrow">validate() on the proposal</div>${list(d.before)}</div>
+    ${d.status === "repaired" ? `<div><div class="eyebrow">after repair</div><div class="mono">${d.waypoints.map(p => `(${p.map(x => x.toFixed(2)).join(", ")})`).join(" → ")}</div><p class="muted" style="font-size:13.5px">re-validated: no violations</p></div>` : ""}
+    ${d.status === "fallback" ? `<div><div class="eyebrow">after repair</div>${list(d.after)}<p class="muted" style="font-size:13.5px">Repair could not make it valid, so the deterministic route is used instead (fallback valid: ${d.fallbackValid}).</p></div>` : ""}
+    <div class="eyebrow">audit: ruleset 1.0 · model pattern-model-0.3 · input sha256 (first 16) · rules checked 8</div>`;
+}
+/* contract tabs */
+const EXAMPLES = {
+delta: `{
+  "schemaVersion": "1.0",
+  "projectId": "prj-7f2a",
+  "modelId": "STR-L03",
+  "sequence": 4182,
+  "transactionId": "STR-L03:4182",
+  "source": { "app": "revit", "event": "document_changed", "user": "architect@example.invalid", "ts": "2026-11-05T09:14:02Z" },
+  "elements": [
+    {
+      "id": "STR-L03:0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d-000e1f20",
+      "versionGuid": "6d0d6c8e-2b4f-4d2a-9c1e-3f5a7b9c1d2e",
+      "category": "structural_framing",
+      "op": "modified",
+      "bbox": { "min": [4.4, 0.0, 2.6], "max": [5.0, 10.0, 3.2] }
+    }
+  ]
+}`,
+req: `{
+  "schemaVersion": "1.0",
+  "requestId": "req-01HZX4M2Q9",
+  "projectId": "prj-7f2a",
+  "run": {
+    "id": "duct-1",
+    "systemType": "duct",
+    "start": [2.0, 5.0, 2.9],
+    "end": [7.0, 5.0, 2.9],
+    "targetElementIds": ["MEP-L03:7b1c2d3e-0000-4000-8000-000000000001-0001a2b3"],
+    "ductType": "Rectangular Duct: Mitered Elbows / Taps",
+    "size": "400x300",
+    "system": "Supply Air"
+  },
+  "constraints": {
+    "clearance_m": 0.15,
+    "bendAngles": [45, 90],
+    "preferredBend": 45,
+    "minStraight_m": 0.30,
+    "soffitZ": 3.2,
+    "zone": { "min": [0.0, 0.0, 2.0], "max": [10.0, 10.0, 3.2] },
+    "side": "auto"
+  },
+  "obstacles": [
+    {
+      "id": "STR-L03:0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d-000e1f20",
+      "versionGuid": "0c2f8e1a-5b7d-4e9f-a1c3-d5e7f9a1b3c5",
+      "bbox": { "min": [4.0, 0.0, 2.6], "max": [4.6, 10.0, 3.2] }
+    }
+  ]
+}`,
+res: `{
+  "schemaVersion": "1.0",
+  "requestId": "req-01HZX4M2Q9",
+  "status": "ok",
+  "reason": null,
+  "side": "under",
+  "waypoints": [
+    [2.0, 5.0, 2.9],
+    [3.4, 5.0, 2.9],
+    [3.85, 5.0, 2.45],
+    [4.75, 5.0, 2.45],
+    [5.2, 5.0, 2.9],
+    [7.0, 5.0, 2.9]
+  ],
+  "fittings": [
+    { "at": [3.4, 5.0, 2.9], "angleDeg": 45 },
+    { "at": [3.85, 5.0, 2.45], "angleDeg": 45 },
+    { "at": [4.75, 5.0, 2.45], "angleDeg": 45 },
+    { "at": [5.2, 5.0, 2.9], "angleDeg": 45 }
+  ],
+  "duct": { "ductType": "Rectangular Duct: Mitered Elbows / Taps", "size": "400x300", "system": "Supply Air" },
+  "metrics": { "length_m": 5.373, "added_m": 0.373, "bends": 4, "min_clearance_m": 0.15, "compute_ms": 0.08 },
+  "validation": { "passed": true, "rulesetVersion": "1.0", "violations": [] },
+  "readSet": {
+    "STR-L03:0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d-000e1f20": "0c2f8e1a-5b7d-4e9f-a1c3-d5e7f9a1b3c5",
+    "MEP-L03:7b1c2d3e-0000-4000-8000-000000000001-0001a2b3": "9a8b7c6d-5e4f-4321-8765-43210fedcba9"
+  },
+  "candidates": [
+    { "side": "under", "feasible": true, "reason": null, "cost_m": 1.373 },
+    { "side": "over", "feasible": false, "reason": "SOFFIT_TOO_LOW", "cost_m": null },
+    { "side": "left", "feasible": false, "reason": "OUTSIDE_ZONE", "cost_m": null },
+    { "side": "right", "feasible": false, "reason": "OUTSIDE_ZONE", "cost_m": null }
+  ]
+}`,
+prop: `{
+  "schemaVersion": "1.0",
+  "proposalId": "prop-01HZX4N7K2",
+  "impactId": "impact-01HZX4N7K1",
+  "projectId": "prj-7f2a",
+  "runId": "duct-1",
+  "targetElementIds": ["MEP-L03:7b1c2d3e-0000-4000-8000-000000000001-0001a2b3"],
+  "cause": {
+    "elementId": "STR-L03:0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d-000e1f20",
+    "versionGuid": "6d0d6c8e-2b4f-4d2a-9c1e-3f5a7b9c1d2e",
+    "op": "modified",
+    "event": "document_changed"
+  },
+  "origin": "deterministic",
+  "status": "ok",
+  "reason": null,
+  "waypoints": [
+    [2.0, 5.0, 2.9],
+    [3.8, 5.0, 2.9],
+    [4.25, 5.0, 2.45],
+    [5.15, 5.0, 2.45],
+    [5.6, 5.0, 2.9],
+    [7.0, 5.0, 2.9]
+  ],
+  "fittings": [
+    { "at": [3.8, 5.0, 2.9], "angleDeg": 45 },
+    { "at": [4.25, 5.0, 2.45], "angleDeg": 45 },
+    { "at": [5.15, 5.0, 2.45], "angleDeg": 45 },
+    { "at": [5.6, 5.0, 2.9], "angleDeg": 45 }
+  ],
+  "metrics": { "length_m": 5.373, "added_m": 0.373, "bends": 4, "min_clearance_m": 0.15 },
+  "validation": { "passed": true, "rulesetVersion": "1.0", "violations": [] },
+  "readSet": {
+    "STR-L03:0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d-000e1f20": "6d0d6c8e-2b4f-4d2a-9c1e-3f5a7b9c1d2e",
+    "MEP-L03:7b1c2d3e-0000-4000-8000-000000000001-0001a2b3": "9a8b7c6d-5e4f-4321-8765-43210fedcba9"
+  },
+  "createdAt": "2026-11-05T09:14:02.610Z"
+}`,
+dec: `{
+  "schemaVersion": "1.0",
+  "proposalId": "prop-01HZX4N7K2",
+  "decision": "accept",
+  "readSet": {
+    "STR-L03:0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d-000e1f20": "6d0d6c8e-2b4f-4d2a-9c1e-3f5a7b9c1d2e",
+    "MEP-L03:7b1c2d3e-0000-4000-8000-000000000001-0001a2b3": "9a8b7c6d-5e4f-4321-8765-43210fedcba9"
+  },
+  "appliedElementIds": [
+    "MEP-L03:7b1c2d3e-0000-4000-8000-000000000001-0001a2b4",
+    "MEP-L03:7b1c2d3e-0000-4000-8000-000000000001-0001a2b5",
+    "MEP-L03:7b1c2d3e-0000-4000-8000-000000000001-0001a2b6"
+  ],
+  "user": "mech.engineer@example.invalid",
+  "ts": "2026-11-05T09:16:40Z"
+}`,
+err: `{
+  "code": "STALE_VERSION",
+  "message": "The duct moved since this proposal was computed; request a new proposal.",
+  "requestId": "req-01HZX4M2Q9",
+  "details": {
+    "conflicts": {
+      "MEP-L03:7b1c2d3e-0000-4000-8000-000000000001-0001a2b3": { "expected": "9a8b7c6d-5e4f-4321-8765-43210fedcba9", "actual": "c1d2e3f4-0000-4000-8000-0000000000aa" }
+    }
+  },
+  "retryable": true
+}` };
+$("tabs").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; for (const x of $("tabs").querySelectorAll("button")) x.setAttribute("aria-selected", x === b ? "true" : "false"); $("tabpanel").textContent = EXAMPLES[b.dataset.tab]; });
+$("tabpanel").textContent = EXAMPLES.delta;
+/* section rail highlight */
+const navLinks = [...document.querySelectorAll(".rail nav a")];
+for (const id of ["scene", "routing", "realtime", "gate"]) new IntersectionObserver(entries => { for (const en of entries) if (en.isIntersecting) for (const a of navLinks) a.setAttribute("aria-current", a.getAttribute("href") === "#" + id ? "true" : "false"); }, { rootMargin: "-40% 0px -55% 0px" }).observe($(id));
+/* parity with the Python output */
+(async () => {
+  const el = $("parity");
+  try {
+    const res = await fetch("scenario.json", { cache: "no-store" }); if (!res.ok) throw new Error(res.status);
+    const data = await res.json(); const names = Object.keys(data); let ok = 0; const bad = [];
+    for (const n of names) {
+      const s = data[n], sec = s.run.section, run = { id: s.run.id, start: s.run.start, end: s.run.end, system: s.run.system, section: section(sec.width, sec.height, sec.insulation, sec.flange) };
+      const obstacles = s.obstacles.map(o => box(o.min, o.max)); const cc = s.constraints;
+      const c = { clearance: cc.clearance, bend: cc.bend, min_straight: cc.min_straight, ceiling_z: cc.ceiling_z, ceiling_clearance: cc.ceiling_clearance, soffit_z: cc.soffit_z, zone: cc.zone ? box(cc.zone.min, cc.zone.max) : null, side: cc.side };
+      const r = reroute(run, obstacles, c), py = s.route;
+      const same = r.status === py.status && JSON.stringify(r.waypoints) === JSON.stringify(py.waypoints) && (py.waypoints.length === 0 || (r.length === py.metrics.length_m && r.bends === py.metrics.bends)) && (r.reason || null) === (py.reason || null);
+      if (same) ok++; else bad.push(n);
+    }
+    el.className = "parity" + (bad.length ? " bad" : ""); el.innerHTML = bad.length ? `JavaScript port differs from Python on: ${bad.join(", ")}` : `✓ JavaScript port matches <code>python -m routing</code> on all ${ok} scenarios (waypoints, status, length, fittings)`;
+  } catch (err) { el.className = "parity"; el.textContent = "Reference data (scenario.json) not available here; the numbers above are computed live."; }
+})();
+recompute();
+</script>
+
+<script type="module">
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+const canvas = document.getElementById("c"), host = document.getElementById("viewport");
+let renderer; try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true }); } catch (e) { host.insertAdjacentHTML("beforeend", `<div class="nothree">3-D view unavailable in this browser. The cross-section in section 1 carries the same numbers.</div>`); }
+if (renderer) {
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(38, 1.6, 0.1, 100);
+  const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const W = (x, y, z) => new THREE.Vector3(x, z, -y);            // world Z-up -> three Y-up
+  const target = W(4.5, 4.3, 2.55);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 1.1));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.3); sun.position.copy(W(2, 1, 9)); scene.add(sun);
+  const statics = new THREE.Group(), dyn = new THREE.Group(); scene.add(statics, dyn);
+  function theme() {
+    scene.background = new THREE.Color(cssVar("--scene-bg"));
+    statics.clear();
+    const grid = new THREE.GridHelper(10, 20, new THREE.Color(cssVar("--scene-grid")), new THREE.Color(cssVar("--scene-grid-2"))); grid.position.copy(W(5, 5, 2.0)); statics.add(grid);
+    for (const [t, p] of [["X", W(10.4, 0, 2.0)], ["Y", W(0, 10.5, 2.0)], ["Z", W(0, 0, 3.55)], ["0", W(-0.4, -0.3, 2.0)]]) statics.add(label(t, p, 0.55, cssVar("--muted")));
+    for (const [v, p] of [["2", W(2, 4.1, 2.0)], ["4", W(4, 4.1, 2.0)], ["6", W(6, 4.1, 2.0)], ["Y = 5", W(0.6, 5, 2.02)]]) statics.add(label(v, p, 0.42, cssVar("--muted")));
+  }
+  function label(text, pos, size = 0.5, color = "#122033") {
+    const c = document.createElement("canvas"), g = c.getContext("2d"); c.width = Math.max(256, 30 * text.length + 40); c.height = 96;
+    g.font = "600 44px IBM Plex Sans, Segoe UI, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+    g.lineWidth = 10; g.strokeStyle = cssVar("--scene-bg"); g.strokeText(text, c.width / 2, 50); g.fillStyle = color; g.fillText(text, c.width / 2, 50);
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthTest: false })); sp.scale.set(size * c.width / 96, size, 1); sp.position.copy(pos); sp.renderOrder = 10; return sp;
+  }
+  function boxMesh(b, mat) { const s = [b.hi[0]-b.lo[0], b.hi[2]-b.lo[2], b.hi[1]-b.lo[1]]; const m = new THREE.Mesh(new THREE.BoxGeometry(...s), mat); m.position.copy(W((b.lo[0]+b.hi[0])/2, (b.lo[1]+b.hi[1])/2, (b.lo[2]+b.hi[2])/2)); return m; }
+  function edges(b, color, dashed) { const s = [b.hi[0]-b.lo[0], b.hi[2]-b.lo[2], b.hi[1]-b.lo[1]]; const geo = new THREE.EdgesGeometry(new THREE.BoxGeometry(...s)); const mat = dashed ? new THREE.LineDashedMaterial({ color, dashSize: 0.12, gapSize: 0.08 }) : new THREE.LineBasicMaterial({ color }); const l = new THREE.LineSegments(geo, mat); if (dashed) l.computeLineDistances(); l.position.copy(W((b.lo[0]+b.hi[0])/2, (b.lo[1]+b.hi[1])/2, (b.lo[2]+b.hi[2])/2)); return l; }
+  function duct(pts, w, h, color, opacity = 1) {
+    const g = new THREE.Group(), mat = new THREE.MeshStandardMaterial({ color, roughness: .55, metalness: .05, transparent: opacity < 1, opacity });
+    const ext = Math.max(w, h) * 0.5;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = W(...pts[i]), b = W(...pts[i+1]), dir = b.clone().sub(a), startExt = i > 0 ? ext : 0, endExt = i < pts.length - 2 ? ext : 0;
+      const L = dir.length() + startExt + endExt; dir.normalize();
+      const m = new THREE.Mesh(new THREE.BoxGeometry(L, h, w), mat); m.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), dir);
+      const mid = a.clone().add(b).multiplyScalar(0.5).add(dir.clone().multiplyScalar((endExt - startExt) / 2)); m.position.copy(mid); g.add(m);
+    }
+    return g;
+  }
+  const update = ({ run, obstacles, c, r }) => {
+    dyn.clear();
+    const beam = obstacles[0], real = run.section.w > 0, w = real ? run.section.w + 2*run.section.ins : 0.08, h = real ? run.section.h + 2*run.section.ins : 0.08;
+    dyn.add(boxMesh(beam, new THREE.MeshStandardMaterial({ color: new THREE.Color(cssVar("--beam")), roughness: .9 })));
+    dyn.add(edges(beam, new THREE.Color(cssVar("--fg")).getHex(), false));
+    const m = c.clearance + run.section.hh, env = { lo: [beam.lo[0]-m, beam.lo[1]-(c.clearance+run.section.hw), beam.lo[2]-m], hi: [beam.hi[0]+m, beam.hi[1]+(c.clearance+run.section.hw), beam.hi[2]+m] };
+    dyn.add(boxMesh(env, new THREE.MeshBasicMaterial({ color: new THREE.Color(cssVar("--envelope")), transparent: true, opacity: .14, depthWrite: false })));
+    dyn.add(edges(env, new THREE.Color(cssVar("--envelope")).getHex(), true));
+    if (c.soffit_z != null) { const slab = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), new THREE.MeshBasicMaterial({ color: new THREE.Color(cssVar("--beam")), transparent: true, opacity: .22, side: THREE.DoubleSide, depthWrite: false })); slab.rotation.x = -Math.PI/2; slab.position.copy(W(5, 5, c.soffit_z + 0.002)); dyn.add(slab); dyn.add(label("slab soffit 3.20", W(9.0, 9.2, 3.3), 0.42, cssVar("--muted"))); }
+    if (c.ceiling_z != null) { const ceil = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), new THREE.MeshBasicMaterial({ color: 0xd9b36a, transparent: true, opacity: .25, side: THREE.DoubleSide, depthWrite: false })); ceil.rotation.x = -Math.PI/2; ceil.position.copy(W(5, 5, c.ceiling_z)); dyn.add(ceil); dyn.add(label(`ceiling ${c.ceiling_z.toFixed(2)}`, W(9.0, 9.2, c.ceiling_z + 0.1), 0.42, cssVar("--muted"))); }
+    dyn.add(duct([run.start, run.end], w, h, new THREE.Color(cssVar("--clash")), r.waypoints.length > 2 ? 0.45 : 0.9));
+    if (r.waypoints.length > 2) dyn.add(duct(r.waypoints, w, h, new THREE.Color(cssVar("--route"))));
+    const names = r.waypoints.length === 2 ? ["A", "B"] : ["A", "P1", "P2", "P3", "P4", "B"];
+    r.waypoints.forEach((p, i) => { const s = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 12), new THREE.MeshBasicMaterial({ color: new THREE.Color(cssVar("--fg")) })); s.position.copy(W(...p)); dyn.add(s); dyn.add(label(names[i], W(p[0], p[1] - 0.35, p[2] + 0.22), 0.36, cssVar("--fg"))); });
+    if (!r.waypoints.length) { dyn.add(label(`NO ROUTE · ${r.reason}`, W(4.5, 5, 2.3), 0.6, cssVar("--clash"))); dyn.add(label("A", W(run.start[0], run.start[1]-0.35, run.start[2]+0.22), 0.36, cssVar("--fg"))); dyn.add(label("B", W(run.end[0], run.end[1]-0.35, run.end[2]+0.22), 0.36, cssVar("--fg"))); }
+    dirty = true;
+  };
+  /* orbit */
+  const orbit = { theta: 0, phi: 1.05, radius: 7.5 };
+  const presets = { iso: { theta: 1.78, phi: 1.12, radius: 8.2 }, side: { theta: Math.PI / 2, phi: Math.PI / 2 - 0.001, radius: 7.2 }, top: { theta: Math.PI / 2, phi: 0.02, radius: 8.5 } };
+  Object.assign(orbit, presets.iso);
+  function place() { camera.position.set(target.x + orbit.radius * Math.sin(orbit.phi) * Math.cos(orbit.theta), target.y + orbit.radius * Math.cos(orbit.phi), target.z + orbit.radius * Math.sin(orbit.phi) * Math.sin(orbit.theta)); camera.lookAt(target); dirty = true; }
+  let drag = null, pinch = null;
+  canvas.addEventListener("pointerdown", e => { drag = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); });
+  canvas.addEventListener("pointermove", e => { if (!drag) return; orbit.theta += (e.clientX - drag.x) * 0.006; orbit.phi = Math.min(Math.PI - 0.05, Math.max(0.02, orbit.phi - (e.clientY - drag.y) * 0.006)); drag = { x: e.clientX, y: e.clientY }; place(); });
+  canvas.addEventListener("pointerup", () => drag = null); canvas.addEventListener("pointercancel", () => drag = null);
+  canvas.addEventListener("wheel", e => { e.preventDefault(); orbit.radius = Math.min(20, Math.max(2.5, orbit.radius * (e.deltaY > 0 ? 1.08 : 0.92))); place(); }, { passive: false });
+  canvas.addEventListener("touchstart", e => { if (e.touches.length === 2) pinch = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); }, { passive: true });
+  canvas.addEventListener("touchmove", e => { if (e.touches.length === 2 && pinch) { const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); orbit.radius = Math.min(20, Math.max(2.5, orbit.radius * pinch / d)); pinch = d; place(); } }, { passive: true });
+  for (const b of host.querySelectorAll("[data-cam]")) b.addEventListener("click", () => { Object.assign(orbit, presets[b.dataset.cam]); for (const x of host.querySelectorAll("[data-cam]")) x.classList.toggle("on", x === b); place(); });
+  host.querySelector("[data-cam=iso]").classList.add("on");
+  function resize() { const r = host.getBoundingClientRect(); renderer.setSize(r.width, r.height, false); camera.aspect = r.width / r.height; camera.updateProjectionMatrix(); dirty = true; }
+  let dirty = true;
+  new ResizeObserver(resize).observe(host);
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { theme(); if (window.scene3dCurrent) update(window.scene3dCurrent); });
+  new MutationObserver(() => { theme(); if (window.scene3dCurrent) update(window.scene3dCurrent); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  window.scene3d = { update: cur => { window.scene3dCurrent = cur; update(cur); } };
+  theme(); resize(); place();
+  (function loop() { if (dirty) { renderer.render(scene, camera); dirty = false; } requestAnimationFrame(loop); })();
+  document.fonts?.ready.then(() => { theme(); if (window.scene3dCurrent) update(window.scene3dCurrent); });
+  if (window.scene3dPending) update(window.scene3dPending);
+  recompute();
+}
+</script>
+<!--ARTIFACT-END-->
+</body>
+</html>

@@ -1,0 +1,1130 @@
+{
+  "default": {
+    "description": "the exercise as given: centre-line duct, 15 cm clearance, 45 deg offsets",
+    "run": {
+      "id": "duct-1",
+      "start": [
+        2.0,
+        5.0,
+        2.9
+      ],
+      "end": [
+        7.0,
+        5.0,
+        2.9
+      ],
+      "system": "duct",
+      "section": {
+        "width": 0.0,
+        "height": 0.0,
+        "insulation": 0.0,
+        "flange": 0.0
+      }
+    },
+    "obstacles": [
+      {
+        "min": [
+          4.0,
+          0.0,
+          2.6
+        ],
+        "max": [
+          4.6,
+          10.0,
+          3.2
+        ]
+      }
+    ],
+    "constraints": {
+      "clearance": 0.15,
+      "bend": 45,
+      "min_straight": 0.3,
+      "ceiling_z": null,
+      "ceiling_clearance": 0.02,
+      "soffit_z": 3.2,
+      "zone": {
+        "min": [
+          0.0,
+          0.0,
+          2.0
+        ],
+        "max": [
+          10.0,
+          10.0,
+          3.2
+        ]
+      },
+      "side": "auto"
+    },
+    "route": {
+      "status": "ok",
+      "reason": null,
+      "side": "under",
+      "waypoints": [
+        [
+          2.0,
+          5.0,
+          2.9
+        ],
+        [
+          3.4,
+          5.0,
+          2.9
+        ],
+        [
+          3.85,
+          5.0,
+          2.45
+        ],
+        [
+          4.75,
+          5.0,
+          2.45
+        ],
+        [
+          5.2,
+          5.0,
+          2.9
+        ],
+        [
+          7.0,
+          5.0,
+          2.9
+        ]
+      ],
+      "fittings": [
+        {
+          "at": [
+            3.4,
+            5.0,
+            2.9
+          ],
+          "angle_deg": 45.0
+        },
+        {
+          "at": [
+            3.85,
+            5.0,
+            2.45
+          ],
+          "angle_deg": 45.0
+        },
+        {
+          "at": [
+            4.75,
+            5.0,
+            2.45
+          ],
+          "angle_deg": 45.0
+        },
+        {
+          "at": [
+            5.2,
+            5.0,
+            2.9
+          ],
+          "angle_deg": 45.0
+        }
+      ],
+      "metrics": {
+        "length_m": 5.373,
+        "added_m": 0.373,
+        "bends": 4,
+        "min_clearance_m": 0.15
+      },
+      "candidates": [
+        {
+          "side": "under",
+          "feasible": true,
+          "reason": null,
+          "cost_m": 1.373
+        },
+        {
+          "side": "over",
+          "feasible": false,
+          "reason": "SOFFIT_TOO_LOW",
+          "cost_m": null
+        },
+        {
+          "side": "left",
+          "feasible": false,
+          "reason": "OUTSIDE_ZONE",
+          "cost_m": null
+        },
+        {
+          "side": "right",
+          "feasible": false,
+          "reason": "OUTSIDE_ZONE",
+          "cost_m": null
+        }
+      ],
+      "notes": []
+    },
+    "validation": {
+      "passed": true,
+      "violations": []
+    }
+  },
+  "ninety": {
+    "description": "same, with 90 deg offsets",
+    "run": {
+      "id": "duct-1",
+      "start": [
+        2.0,
+        5.0,
+        2.9
+      ],
+      "end": [
+        7.0,
+        5.0,
+        2.9
+      ],
+      "system": "duct",
+      "section": {
+        "width": 0.0,
+        "height": 0.0,
+        "insulation": 0.0,
+        "flange": 0.0
+      }
+    },
+    "obstacles": [
+      {
+        "min": [
+          4.0,
+          0.0,
+          2.6
+        ],
+        "max": [
+          4.6,
+          10.0,
+          3.2
+        ]
+      }
+    ],
+    "constraints": {
+      "clearance": 0.15,
+      "bend": 90,
+      "min_straight": 0.3,
+      "ceiling_z": null,
+      "ceiling_clearance": 0.02,
+      "soffit_z": 3.2,
+      "zone": {
+        "min": [
+          0.0,
+          0.0,
+          2.0
+        ],
+        "max": [
+          10.0,
+          10.0,
+          3.2
+        ]
+      },
+      "side": "auto"
+    },
+    "route": {
+      "status": "ok",
+      "reason": null,
+      "side": "under",
+      "waypoints": [
+        [
+          2.0,
+          5.0,
+          2.9
+        ],
+        [
+          3.85,
+          5.0,
+          2.9
+        ],
+        [
+          3.85,
+          5.0,
+          2.45
+        ],
+        [
+          4.75,
+          5.0,
+          2.45
+        ],
+        [
+          4.75,
+          5.0,
+          2.9
+        ],
+        [
+          7.0,
+          5.0,
+          2.9
+        ]
+      ],
+      "fittings": [
+        {
+          "at": [
+            3.85,
+            5.0,
+            2.9
+          ],
+          "angle_deg": 90.0
+        },
+        {
+          "at": [
+            3.85,
+            5.0,
+            2.45
+          ],
+          "angle_deg": 90.0
+        },
+        {
+          "at": [
+            4.75,
+            5.0,
+            2.45
+          ],
+          "angle_deg": 90.0
+        },
+        {
+          "at": [
+            4.75,
+            5.0,
+            2.9
+          ],
+          "angle_deg": 90.0
+        }
+      ],
+      "metrics": {
+        "length_m": 5.9,
+        "added_m": 0.9,
+        "bends": 4,
+        "min_clearance_m": 0.15
+      },
+      "candidates": [
+        {
+          "side": "under",
+          "feasible": true,
+          "reason": null,
+          "cost_m": 1.9
+        },
+        {
+          "side": "over",
+          "feasible": false,
+          "reason": "SOFFIT_TOO_LOW",
+          "cost_m": null
+        },
+        {
+          "side": "left",
+          "feasible": false,
+          "reason": "OUTSIDE_ZONE",
+          "cost_m": null
+        },
+        {
+          "side": "right",
+          "feasible": false,
+          "reason": "OUTSIDE_ZONE",
+          "cost_m": null
+        }
+      ],
+      "notes": []
+    },
+    "validation": {
+      "passed": true,
+      "violations": []
+    }
+  },
+  "moved": {
+    "description": "the beam moved +0.40 m in X (the real-time event of section 2)",
+    "run": {
+      "id": "duct-1",
+      "start": [
+        2.0,
+        5.0,
+        2.9
+      ],
+      "end": [
+        7.0,
+        5.0,
+        2.9
+      ],
+      "system": "duct",
+      "section": {
+        "width": 0.0,
+        "height": 0.0,
+        "insulation": 0.0,
+        "flange": 0.0
+      }
+    },
+    "obstacles": [
+      {
+        "min": [
+          4.4,
+          0.0,
+          2.6
+        ],
+        "max": [
+          5.0,
+          10.0,
+          3.2
+        ]
+      }
+    ],
+    "constraints": {
+      "clearance": 0.15,
+      "bend": 45,
+      "min_straight": 0.3,
+      "ceiling_z": null,
+      "ceiling_clearance": 0.02,
+      "soffit_z": 3.2,
+      "zone": {
+        "min": [
+          0.0,
+          0.0,
+          2.0
+        ],
+        "max": [
+          10.0,
+          10.0,
+          3.2
+        ]
+      },
+      "side": "auto"
+    },
+    "route": {
+      "status": "ok",
+      "reason": null,
+      "side": "under",
+      "waypoints": [
+        [
+          2.0,
+          5.0,
+          2.9
+        ],
+        [
+          3.8,
+          5.0,
+          2.9
+        ],
+        [
+          4.25,
+          5.0,
+          2.45
+        ],
+        [
+          5.15,
+          5.0,
+          2.45
+        ],
+        [
+          5.6,
+          5.0,
+          2.9
+        ],
+        [
+          7.0,
+          5.0,
+          2.9
+        ]
+      ],
+      "fittings": [
+        {
+          "at": [
+            3.8,
+            5.0,
+            2.9
+          ],
+          "angle_deg": 45.0
+        },
+        {
+          "at": [
+            4.25,
+            5.0,
+            2.45
+          ],
+          "angle_deg": 45.0
+        },
+        {
+          "at": [
+            5.15,
+            5.0,
+            2.45
+          ],
+          "angle_deg": 45.0
+        },
+        {
+          "at": [
+            5.6,
+            5.0,
+            2.9
+          ],
+          "angle_deg": 45.0
+        }
+      ],
+      "metrics": {
+        "length_m": 5.373,
+        "added_m": 0.373,
+        "bends": 4,
+        "min_clearance_m": 0.15
+      },
+      "candidates": [
+        {
+          "side": "under",
+          "feasible": true,
+          "reason": null,
+          "cost_m": 1.373
+        },
+        {
+          "side": "over",
+          "feasible": false,
+          "reason": "SOFFIT_TOO_LOW",
+          "cost_m": null
+        },
+        {
+          "side": "left",
+          "feasible": false,
+          "reason": "OUTSIDE_ZONE",
+          "cost_m": null
+        },
+        {
+          "side": "right",
+          "feasible": false,
+          "reason": "OUTSIDE_ZONE",
+          "cost_m": null
+        }
+      ],
+      "notes": []
+    },
+    "validation": {
+      "passed": true,
+      "violations": []
+    }
+  },
+  "real-section": {
+    "description": "a 400x300 insulated duct (run at 2.85) under a 2.70 m suspended ceiling -> NO_ROUTE",
+    "run": {
+      "id": "duct-1",
+      "start": [
+        2.0,
+        5.0,
+        2.85
+      ],
+      "end": [
+        7.0,
+        5.0,
+        2.85
+      ],
+      "system": "duct",
+      "section": {
+        "width": 0.4,
+        "height": 0.3,
+        "insulation": 0.025,
+        "flange": 0.015
+      }
+    },
+    "obstacles": [
+      {
+        "min": [
+          4.0,
+          0.0,
+          2.6
+        ],
+        "max": [
+          4.6,
+          10.0,
+          3.2
+        ]
+      }
+    ],
+    "constraints": {
+      "clearance": 0.15,
+      "bend": 45,
+      "min_straight": 0.3,
+      "ceiling_z": 2.7,
+      "ceiling_clearance": 0.02,
+      "soffit_z": 3.2,
+      "zone": {
+        "min": [
+          0.0,
+          0.0,
+          2.0
+        ],
+        "max": [
+          10.0,
+          10.0,
+          3.2
+        ]
+      },
+      "side": "auto"
+    },
+    "route": {
+      "status": "no_route",
+      "reason": "PLENUM_TOO_SHALLOW",
+      "side": null,
+      "waypoints": [],
+      "fittings": [],
+      "metrics": {
+        "length_m": 0.0,
+        "added_m": 0.0,
+        "bends": 0,
+        "min_clearance_m": null
+      },
+      "candidates": [
+        {
+          "side": "under",
+          "feasible": false,
+          "reason": "PLENUM_TOO_SHALLOW",
+          "cost_m": null
+        },
+        {
+          "side": "over",
+          "feasible": false,
+          "reason": "SOFFIT_TOO_LOW",
+          "cost_m": null
+        },
+        {
+          "side": "left",
+          "feasible": false,
+          "reason": "OUTSIDE_ZONE",
+          "cost_m": null
+        },
+        {
+          "side": "right",
+          "feasible": false,
+          "reason": "OUTSIDE_ZONE",
+          "cost_m": null
+        }
+      ],
+      "notes": [
+        "no feasible offset: raise a coordination issue (sleeve / bulkhead / move the beam)"
+      ]
+    },
+    "validation": {
+      "passed": true,
+      "violations": []
+    }
+  },
+  "real-low": {
+    "description": "the same duct with the ceiling at 2.00 m -> feasible at centre-line 2.26",
+    "run": {
+      "id": "duct-1",
+      "start": [
+        2.0,
+        5.0,
+        2.85
+      ],
+      "end": [
+        7.0,
+        5.0,
+        2.85
+      ],
+      "system": "duct",
+      "section": {
+        "width": 0.4,
+        "height": 0.3,
+        "insulation": 0.025,
+        "flange": 0.015
+      }
+    },
+    "obstacles": [
+      {
+        "min": [
+          4.0,
+          0.0,
+          2.6
+        ],
+        "max": [
+          4.6,
+          10.0,
+          3.2
+        ]
+      }
+    ],
+    "constraints": {
+      "clearance": 0.15,
+      "bend": 45,
+      "min_straight": 0.3,
+      "ceiling_z": 2.0,
+      "ceiling_clearance": 0.02,
+      "soffit_z": 3.2,
+      "zone": {
+        "min": [
+          0.0,
+          0.0,
+          2.0
+        ],
+        "max": [
+          10.0,
+          10.0,
+          3.2
+        ]
+      },
+      "side": "auto"
+    },
+    "route": {
+      "status": "ok",
+      "reason": null,
+      "side": "under",
+      "waypoints": [
+        [
+          2.0,
+          5.0,
+          2.85
+        ],
+        [
+          3.07,
+          5.0,
+          2.85
+        ],
+        [
+          3.66,
+          5.0,
+          2.26
+        ],
+        [
+          4.94,
+          5.0,
+          2.26
+        ],
+        [
+          5.53,
+          5.0,
+          2.85
+        ],
+        [
+          7.0,
+          5.0,
+          2.85
+        ]
+      ],
+      "fittings": [
+        {
+          "at": [
+            3.07,
+            5.0,
+            2.85
+          ],
+          "angle_deg": 45.0
+        },
+        {
+          "at": [
+            3.66,
+            5.0,
+            2.26
+          ],
+          "angle_deg": 45.0
+        },
+        {
+          "at": [
+            4.94,
+            5.0,
+            2.26
+          ],
+          "angle_deg": 45.0
+        },
+        {
+          "at": [
+            5.53,
+            5.0,
+            2.85
+          ],
+          "angle_deg": 45.0
+        }
+      ],
+      "metrics": {
+        "length_m": 5.489,
+        "added_m": 0.489,
+        "bends": 4,
+        "min_clearance_m": 0.15
+      },
+      "candidates": [
+        {
+          "side": "under",
+          "feasible": true,
+          "reason": null,
+          "cost_m": 1.489
+        },
+        {
+          "side": "over",
+          "feasible": false,
+          "reason": "SOFFIT_TOO_LOW",
+          "cost_m": null
+        },
+        {
+          "side": "left",
+          "feasible": false,
+          "reason": "OUTSIDE_ZONE",
+          "cost_m": null
+        },
+        {
+          "side": "right",
+          "feasible": false,
+          "reason": "OUTSIDE_ZONE",
+          "cost_m": null
+        }
+      ],
+      "notes": []
+    },
+    "validation": {
+      "passed": true,
+      "violations": []
+    }
+  },
+  "gravity": {
+    "description": "a gravity drain -> needs_review (downstream re-slope)",
+    "run": {
+      "id": "drain-1",
+      "start": [
+        2.0,
+        5.0,
+        2.9
+      ],
+      "end": [
+        7.0,
+        5.0,
+        2.9
+      ],
+      "system": "gravity_pipe",
+      "section": {
+        "width": 0.0,
+        "height": 0.0,
+        "insulation": 0.0,
+        "flange": 0.0
+      }
+    },
+    "obstacles": [
+      {
+        "min": [
+          4.0,
+          0.0,
+          2.6
+        ],
+        "max": [
+          4.6,
+          10.0,
+          3.2
+        ]
+      }
+    ],
+    "constraints": {
+      "clearance": 0.15,
+      "bend": 45,
+      "min_straight": 0.3,
+      "ceiling_z": null,
+      "ceiling_clearance": 0.02,
+      "soffit_z": 3.2,
+      "zone": {
+        "min": [
+          0.0,
+          0.0,
+          2.0
+        ],
+        "max": [
+          10.0,
+          10.0,
+          3.2
+        ]
+      },
+      "side": "auto"
+    },
+    "route": {
+      "status": "needs_review",
+      "reason": null,
+      "side": "under",
+      "waypoints": [
+        [
+          2.0,
+          5.0,
+          2.9
+        ],
+        [
+          3.4,
+          5.0,
+          2.9
+        ],
+        [
+          3.85,
+          5.0,
+          2.45
+        ],
+        [
+          4.75,
+          5.0,
+          2.45
+        ],
+        [
+          5.2,
+          5.0,
+          2.9
+        ],
+        [
+          7.0,
+          5.0,
+          2.9
+        ]
+      ],
+      "fittings": [
+        {
+          "at": [
+            3.4,
+            5.0,
+            2.9
+          ],
+          "angle_deg": 45.0
+        },
+        {
+          "at": [
+            3.85,
+            5.0,
+            2.45
+          ],
+          "angle_deg": 45.0
+        },
+        {
+          "at": [
+            4.75,
+            5.0,
+            2.45
+          ],
+          "angle_deg": 45.0
+        },
+        {
+          "at": [
+            5.2,
+            5.0,
+            2.9
+          ],
+          "angle_deg": 45.0
+        }
+      ],
+      "metrics": {
+        "length_m": 5.373,
+        "added_m": 0.373,
+        "bends": 4,
+        "min_clearance_m": 0.15
+      },
+      "candidates": [
+        {
+          "side": "under",
+          "feasible": true,
+          "reason": null,
+          "cost_m": 1.373
+        },
+        {
+          "side": "over",
+          "feasible": false,
+          "reason": "GRAVITY_CANNOT_RISE",
+          "cost_m": null
+        },
+        {
+          "side": "left",
+          "feasible": false,
+          "reason": "OUTSIDE_ZONE",
+          "cost_m": null
+        },
+        {
+          "side": "right",
+          "feasible": false,
+          "reason": "OUTSIDE_ZONE",
+          "cost_m": null
+        }
+      ],
+      "notes": [
+        "GRAVITY_RESLOPE_DOWNSTREAM: the drop propagates; the downstream run must be re-sloped"
+      ]
+    },
+    "validation": {
+      "passed": false,
+      "violations": [
+        {
+          "rule": "gravity_slope",
+          "message": "slope -0.00 % below the minimum 1 %",
+          "at": [
+            2.0,
+            5.0,
+            2.9
+          ]
+        },
+        {
+          "rule": "gravity_slope",
+          "message": "slope -0.00 % below the minimum 1 %",
+          "at": [
+            3.85,
+            5.0,
+            2.45
+          ]
+        },
+        {
+          "rule": "gravity_slope",
+          "message": "a gravity pipe may not rise",
+          "at": [
+            4.75,
+            5.0,
+            2.45
+          ]
+        },
+        {
+          "rule": "gravity_slope",
+          "message": "slope -0.00 % below the minimum 1 %",
+          "at": [
+            5.2,
+            5.0,
+            2.9
+          ]
+        }
+      ]
+    }
+  },
+  "no-soffit": {
+    "description": "no slab information and a 2.50 m ceiling -> the router goes OVER",
+    "run": {
+      "id": "duct-1",
+      "start": [
+        2.0,
+        5.0,
+        2.9
+      ],
+      "end": [
+        7.0,
+        5.0,
+        2.9
+      ],
+      "system": "duct",
+      "section": {
+        "width": 0.0,
+        "height": 0.0,
+        "insulation": 0.0,
+        "flange": 0.0
+      }
+    },
+    "obstacles": [
+      {
+        "min": [
+          4.0,
+          0.0,
+          2.6
+        ],
+        "max": [
+          4.6,
+          10.0,
+          3.2
+        ]
+      }
+    ],
+    "constraints": {
+      "clearance": 0.15,
+      "bend": 45,
+      "min_straight": 0.3,
+      "ceiling_z": 2.5,
+      "ceiling_clearance": 0.02,
+      "soffit_z": null,
+      "zone": null,
+      "side": "auto"
+    },
+    "route": {
+      "status": "ok",
+      "reason": null,
+      "side": "over",
+      "waypoints": [
+        [
+          2.0,
+          5.0,
+          2.9
+        ],
+        [
+          3.4,
+          5.0,
+          2.9
+        ],
+        [
+          3.85,
+          5.0,
+          3.35
+        ],
+        [
+          4.75,
+          5.0,
+          3.35
+        ],
+        [
+          5.2,
+          5.0,
+          2.9
+        ],
+        [
+          7.0,
+          5.0,
+          2.9
+        ]
+      ],
+      "fittings": [
+        {
+          "at": [
+            3.4,
+            5.0,
+            2.9
+          ],
+          "angle_deg": 45.0
+        },
+        {
+          "at": [
+            3.85,
+            5.0,
+            3.35
+          ],
+          "angle_deg": 45.0
+        },
+        {
+          "at": [
+            4.75,
+            5.0,
+            3.35
+          ],
+          "angle_deg": 45.0
+        },
+        {
+          "at": [
+            5.2,
+            5.0,
+            2.9
+          ],
+          "angle_deg": 45.0
+        }
+      ],
+      "metrics": {
+        "length_m": 5.373,
+        "added_m": 0.373,
+        "bends": 4,
+        "min_clearance_m": 0.15
+      },
+      "candidates": [
+        {
+          "side": "under",
+          "feasible": false,
+          "reason": "PLENUM_TOO_SHALLOW",
+          "cost_m": null
+        },
+        {
+          "side": "over",
+          "feasible": true,
+          "reason": null,
+          "cost_m": 1.373
+        },
+        {
+          "side": "left",
+          "feasible": false,
+          "reason": "INSUFFICIENT_STRAIGHT",
+          "cost_m": null
+        },
+        {
+          "side": "right",
+          "feasible": false,
+          "reason": "INSUFFICIENT_STRAIGHT",
+          "cost_m": null
+        }
+      ],
+      "notes": []
+    },
+    "validation": {
+      "passed": true,
+      "violations": []
+    }
+  }
+}

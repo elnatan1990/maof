@@ -1,0 +1,13 @@
+[project]
+name = "maof-mep-spike"
+version = "0.1.0"
+description = "Design & algorithmic spike: real-time MEP coordination (routing, sync, AI safety gate)"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

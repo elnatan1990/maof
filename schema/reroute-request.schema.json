@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/mep/reroute-request.schema.json",
+  "title": "RerouteRequest",
+  "description": "Client -> engine (synchronous RPC). Route one straight run around whatever blocks it. Obstacles may be omitted: the engine then reads its own twin. Metres, project shared coordinates.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "requestId", "projectId", "run", "constraints"],
+  "properties": {
+    "schemaVersion": { "type": "string", "enum": ["1.0"] },
+    "requestId": { "type": "string", "description": "Idempotency key; the same id returns the same response." },
+    "projectId": { "type": "string" },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "systemType", "start", "end"],
+      "properties": {
+        "id": { "type": "string" },
+        "systemType": { "type": "string", "enum": ["duct", "pipe", "gravity_pipe"] },
+        "section": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "width_m": { "type": "number", "minimum": 0 },
+            "height_m": { "type": "number", "minimum": 0 },
+            "insulation_m": { "type": "number", "minimum": 0 },
+            "flange_m": { "type": "number", "minimum": 0 }
+          },
+          "description": "Omitted = centre-line model (the exercise). Half-extents include insulation and flange."
+        },
+        "start": { "$ref": "#/$defs/vec3" },
+        "end": { "$ref": "#/$defs/vec3" },
+        "targetElementIds": { "type": "array", "items": { "type": "string" },
+                              "description": "The existing Revit elements this run replaces when a proposal is accepted." },
+        "ductType": { "type": "string" },
+        "size": { "type": "string" },
+        "system": { "type": "string" }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clearance_m", "bendAngles"],
+      "properties": {
+        "clearance_m": { "type": "number", "minimum": 0 },
+        "bendAngles": { "type": "array", "minItems": 1, "items": { "type": "number", "enum": [45, 90] } },
+        "preferredBend": { "type": "number", "enum": [45, 90] },
+        "minStraight_m": { "type": "number", "minimum": 0 },
+        "ceilingZ": { "type": "number", "description": "Top of the suspended ceiling (Z_c)." },
+        "ceilingClearance_m": { "type": "number", "minimum": 0 },
+        "soffitZ": { "type": "number", "description": "Slab soffit." },
+        "zone": { "$ref": "#/$defs/box" },
+        "minSlope": { "type": "number", "minimum": 0, "description": "Gravity pipes only, e.g. 0.01." },
+        "side": { "type": "string", "enum": ["auto", "under", "over", "left", "right"] }
+      }
+    },
+    "obstacles": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["id", "versionGuid", "bbox"],
+        "properties": { "id": { "type": "string" }, "versionGuid": { "type": "string" }, "bbox": { "$ref": "#/$defs/box" } }
+      },
+      "description": "Optional. Omitted = the engine uses the project twin."
+    }
+  },
+  "$defs": {
+    "vec3": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "number" } },
+    "box": { "type": "object", "additionalProperties": false, "required": ["min", "max"],
+             "properties": { "min": { "$ref": "#/$defs/vec3" }, "max": { "$ref": "#/$defs/vec3" } } }
+  }
+}

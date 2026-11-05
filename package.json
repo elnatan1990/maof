@@ -1,0 +1,9 @@
+{
+  "name": "maof-mep-spike",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Static companion page for the MEP coordination spike (web/) and the live check",
+  "scripts": {
+    "check:live": "node scripts/check-live.mjs"
+  }
+}

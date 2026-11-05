@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 340" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" role="img" aria-label="End-to-end pipeline: Revit add-in, WebSocket gateway, NATS JetStream, spatial engine, push to the engineer's viewport and to the architect">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#0f7c86"/>
+    </marker>
+    <marker id="arrgrey" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+  <rect width="1080" height="340" rx="10" fill="#ffffff"/>
+
+  <!-- node 1: architect's Revit -->
+  <g>
+    <rect x="14" y="60" width="196" height="118" rx="10" fill="#f1f5f9" stroke="#0f172a" stroke-width="1.5"/>
+    <text x="112" y="82" text-anchor="middle" font-weight="700" fill="#0f172a">Architect · Revit add-in</text>
+    <text x="26" y="102" fill="#334155" font-size="11">DocumentChanged → ModelDelta</text>
+    <text x="26" y="118" fill="#334155" font-size="11">1 transaction = 1 delta, &lt; 1 KB</text>
+    <text x="26" y="134" fill="#334155" font-size="11">feet → m · {modelId}:{UniqueId}</text>
+    <text x="26" y="150" fill="#334155" font-size="11">VersionGuid · echo suppression</text>
+    <text x="26" y="166" fill="#334155" font-size="11">outbox, replay on reconnect</text>
+  </g>
+  <line x1="210" y1="119" x2="252" y2="119" stroke="#0f7c86" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="231" y="134" text-anchor="middle" fill="#64748b" font-size="10">20–60 ms</text>
+
+  <!-- node 2: gateway -->
+  <g>
+    <rect x="254" y="64" width="150" height="110" rx="10" fill="#ffffff" stroke="#0f7c86" stroke-width="1.5"/>
+    <text x="329" y="86" text-anchor="middle" font-weight="700" fill="#0f172a">Sync gateway</text>
+    <text x="266" y="106" fill="#334155" font-size="11">WebSocket, both clients</text>
+    <text x="266" y="122" fill="#334155" font-size="11">protobuf / MessagePack</text>
+    <text x="266" y="138" fill="#334155" font-size="11">project-scoped token</text>
+    <text x="266" y="154" fill="#334155" font-size="11">idempotent: transactionId</text>
+  </g>
+  <line x1="404" y1="119" x2="450" y2="119" stroke="#0f7c86" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="427" y="134" text-anchor="middle" fill="#64748b" font-size="10">&lt; 10 ms</text>
+
+  <!-- node 3: log -->
+  <g>
+    <rect x="452" y="64" width="150" height="110" rx="10" fill="#ffffff" stroke="#0f7c86" stroke-width="1.5"/>
+    <text x="527" y="86" text-anchor="middle" font-weight="700" fill="#0f172a">NATS JetStream</text>
+    <text x="464" y="106" fill="#334155" font-size="11">ordered per project</text>
+    <text x="464" y="122" fill="#334155" font-size="11">durable consumers</text>
+    <text x="464" y="138" fill="#334155" font-size="11">replay from sequence</text>
+    <text x="464" y="154" fill="#334155" font-size="11">at-least-once delivery</text>
+  </g>
+  <line x1="602" y1="119" x2="648" y2="119" stroke="#0f7c86" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="625" y="134" text-anchor="middle" fill="#64748b" font-size="10">&lt; 1 ms</text>
+
+  <!-- node 4: engine -->
+  <g>
+    <rect x="650" y="60" width="204" height="118" rx="10" fill="#e6f3f4" stroke="#0f7c86" stroke-width="1.5"/>
+    <text x="752" y="82" text-anchor="middle" font-weight="700" fill="#0f172a">Spatial engine</text>
+    <text x="662" y="102" fill="#334155" font-size="11">twin = view of the log · R-tree</text>
+    <text x="662" y="118" fill="#334155" font-size="11">update beam O(log n) · query runs</text>
+    <text x="662" y="134" fill="#334155" font-size="11">reroute &lt; 1 ms · validate &lt; 1 ms</text>
+    <text x="662" y="150" fill="#334155" font-size="11">append RoutingProposal (log)</text>
+    <text x="662" y="166" fill="#334155" font-size="11">bundle: ChangeImpact{proposals[]}</text>
+  </g>
+  <line x1="854" y1="119" x2="900" y2="119" stroke="#0f7c86" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="877" y="108" text-anchor="middle" fill="#0f7c86" font-size="10.5">push</text>
+  <text x="877" y="134" text-anchor="middle" fill="#64748b" font-size="9.5">20–60 ms</text>
+
+  <!-- node 5: subscribers -->
+  <g>
+    <rect x="902" y="42" width="160" height="44" rx="8" fill="#f1f5f9" stroke="#0f172a" stroke-width="1.5"/>
+    <text x="982" y="60" text-anchor="middle" font-weight="700" fill="#0f172a" font-size="11.5">Mech. engineer · Revit</text>
+    <text x="982" y="76" text-anchor="middle" fill="#334155" font-size="10.5">DirectContext3D overlay</text>
+    <rect x="902" y="96" width="160" height="44" rx="8" fill="#f1f5f9" stroke="#0f172a" stroke-width="1.5"/>
+    <text x="982" y="114" text-anchor="middle" font-weight="700" fill="#0f172a" font-size="11.5">Web viewer</text>
+    <text x="982" y="130" text-anchor="middle" fill="#334155" font-size="10.5">updates one mesh</text>
+    <rect x="902" y="150" width="160" height="44" rx="8" fill="#fff7ed" stroke="#f97316" stroke-width="1.5"/>
+    <text x="982" y="168" text-anchor="middle" font-weight="700" fill="#0f172a" font-size="11.5">Architect · impact</text>
+    <text x="982" y="184" text-anchor="middle" fill="#334155" font-size="10.5">"your move affects 3 runs"</text>
+  </g>
+
+  <!-- accept path (CAS) -->
+  <path d="M982,194 L982,236 L329,236 L329,168" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#arrgrey)"/>
+  <text x="655" y="230" text-anchor="middle" fill="#475569" font-size="10.5">accept = ProposalDecision with the read-set {id: VersionGuid} · compare-and-swap on the twin · else STALE_VERSION</text>
+
+  <!-- budget bar -->
+  <rect x="18" y="262" width="1044" height="56" rx="8" fill="#0f172a"/>
+  <text x="540" y="284" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="600">Round trip: p50 target 0.5 s · p99 target 3 s · deltas not models · overlay not edit · one impact message, not N pushes</text>
+  <text x="540" y="304" text-anchor="middle" fill="#cbd5e1" font-size="11">Not under our control: Revit regeneration after the commit (100 ms – s on a large model) and ExternalEvent idle scheduling (a modal dialog delays it)</text>
+</svg>

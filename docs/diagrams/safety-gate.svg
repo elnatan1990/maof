@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 320" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" role="img" aria-label="AI safety gate: the model emits weights or candidates, the deterministic validator decides, repair is bounded, fallback is the deterministic route, every decision is audited">
+  <defs>
+    <marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#0f7c86"/></marker>
+    <marker id="ok" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#16a34a"/></marker>
+    <marker id="bad" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#dc2626"/></marker>
+  </defs>
+  <rect width="1080" height="320" rx="10" fill="#ffffff"/>
+
+  <!-- ML model -->
+  <rect x="18" y="40" width="200" height="150" rx="10" fill="#f1f5f9" stroke="#0f172a" stroke-width="1.5"/>
+  <text x="118" y="62" text-anchor="middle" font-weight="700" fill="#0f172a">Pattern model (ML)</text>
+  <text x="30" y="84" fill="#334155" font-size="11" font-weight="600">A · cost weights / ranking</text>
+  <text x="30" y="99" fill="#334155" font-size="11">over deterministic candidates</text>
+  <text x="30" y="113" fill="#15803d" font-size="11" font-weight="600">→ never geometry (primary)</text>
+  <text x="30" y="137" fill="#334155" font-size="11" font-weight="600">B · candidate waypoints</text>
+  <text x="30" y="152" fill="#334155" font-size="11">strict JSON schema, else rejected</text>
+  <text x="30" y="167" fill="#334155" font-size="11">untrusted → validated below</text>
+
+  <!-- A path -> router -->
+  <line x1="218" y1="90" x2="268" y2="90" stroke="#0f7c86" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="270" y="56" width="170" height="68" rx="10" fill="#e6f3f4" stroke="#0f7c86" stroke-width="1.5"/>
+  <text x="355" y="78" text-anchor="middle" font-weight="700" fill="#0f172a">Deterministic router</text>
+  <text x="355" y="96" text-anchor="middle" fill="#334155" font-size="11">builds the candidates</text>
+  <text x="355" y="112" text-anchor="middle" fill="#334155" font-size="11">valid by construction</text>
+  <line x1="440" y1="90" x2="490" y2="90" stroke="#0f7c86" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- B path -> validate -->
+  <path d="M218,145 L470,145 L470,120 L490,120" fill="none" stroke="#0f7c86" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- validate -->
+  <rect x="492" y="40" width="230" height="150" rx="10" fill="#ffffff" stroke="#0f172a" stroke-width="1.5"/>
+  <text x="607" y="62" text-anchor="middle" font-weight="700" fill="#0f172a">validate() · ruleset v1.0</text>
+  <text x="504" y="82" fill="#334155" font-size="11">clearance, with the duct body</text>
+  <text x="504" y="97" fill="#334155" font-size="11">ceiling clearance on the duct bottom</text>
+  <text x="504" y="112" fill="#334155" font-size="11">gravity slope: monotonic, ≥ 1 %</text>
+  <text x="504" y="127" fill="#334155" font-size="11">bends ∈ {45°, 90°} · min straight</text>
+  <text x="504" y="142" fill="#334155" font-size="11">soffit · zone · endpoints</text>
+  <text x="504" y="164" fill="#0f7c86" font-size="11" font-weight="600">pure · versioned · shared with the router</text>
+  <text x="504" y="179" fill="#0f7c86" font-size="11" font-weight="600">mm precision · typed violations</text>
+
+  <!-- pass -->
+  <line x1="722" y1="80" x2="772" y2="80" stroke="#16a34a" stroke-width="2" marker-end="url(#ok)"/>
+  <text x="747" y="72" text-anchor="middle" fill="#15803d" font-size="10.5">pass</text>
+  <rect x="774" y="56" width="288" height="48" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+  <text x="918" y="76" text-anchor="middle" font-weight="700" fill="#14532d">Accept → RoutingProposal</text>
+  <text x="918" y="94" text-anchor="middle" fill="#166534" font-size="11">origin: ai_ranked · validation.passed = true</text>
+
+  <!-- fail -> repair -->
+  <line x1="722" y1="150" x2="772" y2="150" stroke="#dc2626" stroke-width="2" marker-end="url(#bad)"/>
+  <text x="747" y="142" text-anchor="middle" fill="#b91c1c" font-size="10.5">fail</text>
+  <rect x="774" y="124" width="150" height="52" rx="10" fill="#fff7ed" stroke="#f97316" stroke-width="1.5"/>
+  <text x="849" y="144" text-anchor="middle" font-weight="700" fill="#0f172a" font-size="11.5">Repair, bounded</text>
+  <text x="849" y="160" text-anchor="middle" fill="#334155" font-size="10.5">push out of inflated faces</text>
+  <text x="849" y="172" text-anchor="middle" fill="#334155" font-size="10.5">≤ 3 passes, validate again</text>
+
+  <!-- repair fail -> fallback -->
+  <line x1="924" y1="150" x2="962" y2="150" stroke="#dc2626" stroke-width="2" marker-end="url(#bad)"/>
+  <text x="943" y="142" text-anchor="middle" fill="#b91c1c" font-size="10">still fails</text>
+  <rect x="964" y="124" width="98" height="52" rx="10" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
+  <text x="1013" y="146" text-anchor="middle" font-weight="700" fill="#7f1d1d" font-size="11.5">Fallback</text>
+  <text x="1013" y="162" text-anchor="middle" fill="#7f1d1d" font-size="10.5">deterministic route</text>
+
+  <!-- guarantee strip -->
+  <rect x="18" y="212" width="1044" height="40" rx="8" fill="#0f172a"/>
+  <text x="540" y="237" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="600">Guarantee: no geometry reaches a proposal without validate() = [] — the model has no write path around it. Kill switch: AI off → deterministic only.</text>
+
+  <!-- audit strip -->
+  <rect x="18" y="262" width="1044" height="44" rx="8" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="540" y="280" text-anchor="middle" fill="#334155" font-size="11">Audit record per decision: ruleset version · model version · input hash · rules passed / failed · accepted | repaired | fallback</text>
+  <text x="540" y="297" text-anchor="middle" fill="#334155" font-size="11">Shadow mode before anything is shown · property tests: random obstacles + random noise ⇒ zero accepted violations</text>
+</svg>

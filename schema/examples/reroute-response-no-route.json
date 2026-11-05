@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "1.0",
+  "requestId": "req-01HZX4M2QA",
+  "status": "no_route",
+  "reason": "PLENUM_TOO_SHALLOW",
+  "side": null,
+  "waypoints": [],
+  "fittings": [],
+  "metrics": { "length_m": 0, "added_m": 0, "bends": 0, "min_clearance_m": null },
+  "validation": { "passed": false, "rulesetVersion": "1.0", "violations": [] },
+  "readSet": {
+    "STR-L03:0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d-000e1f20": "0c2f8e1a-5b7d-4e9f-a1c3-d5e7f9a1b3c5"
+  },
+  "candidates": [
+    { "side": "under", "feasible": false, "reason": "PLENUM_TOO_SHALLOW", "cost_m": null },
+    { "side": "over", "feasible": false, "reason": "SOFFIT_TOO_LOW", "cost_m": null },
+    { "side": "left", "feasible": false, "reason": "OUTSIDE_ZONE", "cost_m": null },
+    { "side": "right", "feasible": false, "reason": "OUTSIDE_ZONE", "cost_m": null }
+  ]
+}

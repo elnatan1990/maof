@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/mep/proposal-decision.schema.json",
+  "title": "ProposalDecision",
+  "description": "Client -> engine. The engineer accepts or rejects a proposal. Accept is a compare-and-swap: the readSet the client saw must still equal the twin, otherwise the engine answers STALE_VERSION and the client re-requests.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "proposalId", "decision", "readSet", "user", "ts"],
+  "properties": {
+    "schemaVersion": { "type": "string", "enum": ["1.0"] },
+    "proposalId": { "type": "string" },
+    "decision": { "type": "string", "enum": ["accept", "reject"] },
+    "readSet": { "type": "object", "additionalProperties": { "type": "string" } },
+    "reason": { "type": "string", "description": "Free text on reject; feeds the ML model's training set as a negative example." },
+    "appliedElementIds": { "type": "array", "items": { "type": "string" },
+                           "description": "On accept: the new Duct / fitting element ids the plugin created, so the twin can map the proposal to real elements." },
+    "user": { "type": "string" },
+    "ts": { "type": "string", "format": "date-time" }
+  }
+}

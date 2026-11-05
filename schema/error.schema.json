@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/mep/error.schema.json",
+  "title": "Error",
+  "description": "Every non-2xx answer and every rejected stream message has this shape.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["code", "message"],
+  "properties": {
+    "code": { "type": "string", "enum": ["NO_ROUTE", "STALE_VERSION", "INVALID_INPUT", "UNAUTHORIZED", "RATE_LIMITED", "INTERNAL"] },
+    "message": { "type": "string" },
+    "requestId": { "type": "string" },
+    "details": { "type": "object", "description": "Machine-readable context: the conflicting readSet entries, the failing field, the no-route reason." },
+    "retryable": { "type": "boolean" }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/mep/routing-proposal.schema.json",
+  "title": "RoutingProposal",
+  "description": "Engine -> subscribed clients (push). One per affected run; when one change affects many runs they travel together in a ChangeImpact {impactId, cause, proposals[]} envelope. A proposal is an overlay until a ProposalDecision accepts it; the engine never writes the authoritative model.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "proposalId", "projectId", "runId", "cause", "origin", "status", "waypoints", "fittings", "metrics", "validation", "readSet", "createdAt"],
+  "properties": {
+    "schemaVersion": { "type": "string", "enum": ["1.0"] },
+    "proposalId": { "type": "string" },
+    "impactId": { "type": "string", "description": "The ChangeImpact this proposal belongs to." },
+    "projectId": { "type": "string" },
+    "runId": { "type": "string" },
+    "targetElementIds": { "type": "array", "items": { "type": "string" } },
+    "cause": {
+      "type": "object", "additionalProperties": false, "required": ["elementId", "versionGuid", "op"],
+      "properties": { "elementId": { "type": "string" }, "versionGuid": { "type": "string" },
+                      "op": { "type": "string", "enum": ["added", "modified", "deleted"] },
+                      "event": { "type": "string", "enum": ["document_changed", "synchronized_with_central"] } }
+    },
+    "origin": { "type": "string", "enum": ["deterministic", "ai_ranked"],
+                "description": "ai_ranked = the ML model chose among / re-weighted deterministic candidates; the validator passed either way." },
+    "status": { "type": "string", "enum": ["ok", "no_route", "needs_review"] },
+    "reason": { "type": ["string", "null"] },
+    "waypoints": { "type": "array", "items": { "$ref": "#/$defs/vec3" } },
+    "fittings": { "type": "array", "items": { "type": "object", "required": ["at", "angleDeg"],
+                  "properties": { "at": { "$ref": "#/$defs/vec3" }, "angleDeg": { "type": "number" } } } },
+    "metrics": { "type": "object", "required": ["length_m", "added_m", "bends"],
+                 "properties": { "length_m": { "type": "number" }, "added_m": { "type": "number" }, "bends": { "type": "integer" },
+                                 "min_clearance_m": { "type": ["number", "null"] } } },
+    "validation": { "type": "object", "required": ["passed", "rulesetVersion"],
+                    "properties": { "passed": { "type": "boolean" }, "rulesetVersion": { "type": "string" },
+                                    "violations": { "type": "array" } } },
+    "readSet": { "type": "object", "additionalProperties": { "type": "string" } },
+    "createdAt": { "type": "string", "format": "date-time" }
+  },
+  "$defs": { "vec3": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "number" } } }
+}

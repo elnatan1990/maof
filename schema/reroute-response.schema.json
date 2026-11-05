@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/mep/reroute-response.schema.json",
+  "title": "RerouteResponse",
+  "description": "Engine -> client. Always carries the validator's verdict and the read-set the result depends on (used as a compare-and-swap at accept time).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "requestId", "status", "waypoints", "fittings", "metrics", "validation", "readSet"],
+  "properties": {
+    "schemaVersion": { "type": "string", "enum": ["1.0"] },
+    "requestId": { "type": "string" },
+    "status": { "type": "string", "enum": ["ok", "no_route", "needs_review"] },
+    "reason": { "type": ["string", "null"], "description": "Set when status != ok, e.g. PLENUM_TOO_SHALLOW, GRAVITY_RESLOPE_DOWNSTREAM, SECOND_OBSTACLE." },
+    "side": { "type": ["string", "null"], "enum": ["under", "over", "left", "right", "straight", null] },
+    "waypoints": { "type": "array", "items": { "$ref": "#/$defs/vec3" } },
+    "fittings": {
+      "type": "array",
+      "items": { "type": "object", "additionalProperties": false, "required": ["at", "angleDeg"],
+                 "properties": { "at": { "$ref": "#/$defs/vec3" }, "angleDeg": { "type": "number" } } },
+      "description": "What the plugin needs to create elbows (NewElbowFitting) between the straight Duct elements."
+    },
+    "duct": {
+      "type": "object", "additionalProperties": false,
+      "properties": { "ductType": { "type": "string" }, "size": { "type": "string" }, "system": { "type": "string" } }
+    },
+    "metrics": {
+      "type": "object", "additionalProperties": false, "required": ["length_m", "added_m", "bends"],
+      "properties": {
+        "length_m": { "type": "number" }, "added_m": { "type": "number" }, "bends": { "type": "integer" },
+        "min_clearance_m": { "type": ["number", "null"] }, "compute_ms": { "type": "number" }
+      }
+    },
+    "validation": {
+      "type": "object", "additionalProperties": false, "required": ["passed", "rulesetVersion", "violations"],
+      "properties": {
+        "passed": { "type": "boolean" },
+        "rulesetVersion": { "type": "string" },
+        "violations": { "type": "array", "items": { "type": "object", "required": ["rule", "message"],
+                        "properties": { "rule": { "type": "string" }, "message": { "type": "string" }, "at": { "type": ["array", "null"] } } } }
+      }
+    },
+    "readSet": { "type": "object", "additionalProperties": { "type": "string" },
+                 "description": "{elementId: versionGuid} of every element this result depends on (the blocker, the run itself, other obstacles)." },
+    "candidates": {
+      "type": "array",
+      "items": { "type": "object", "required": ["side", "feasible"],
+                 "properties": { "side": { "type": "string" }, "feasible": { "type": "boolean" },
+                                 "reason": { "type": ["string", "null"] }, "cost_m": { "type": ["number", "null"] } } },
+      "description": "Why each offset was or was not chosen; shown to the engineer, logged for audit."
+    }
+  },
+  "$defs": { "vec3": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "number" } } }
+}

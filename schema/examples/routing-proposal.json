@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "1.0",
+  "proposalId": "prop-01HZX4N7K2",
+  "impactId": "impact-01HZX4N7K1",
+  "projectId": "prj-7f2a",
+  "runId": "duct-1",
+  "targetElementIds": ["MEP-L03:7b1c2d3e-0000-4000-8000-000000000001-0001a2b3"],
+  "cause": {
+    "elementId": "STR-L03:0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d-000e1f20",
+    "versionGuid": "6d0d6c8e-2b4f-4d2a-9c1e-3f5a7b9c1d2e",
+    "op": "modified",
+    "event": "document_changed"
+  },
+  "origin": "deterministic",
+  "status": "ok",
+  "reason": null,
+  "waypoints": [
+    [2.0, 5.0, 2.9],
+    [3.8, 5.0, 2.9],
+    [4.25, 5.0, 2.45],
+    [5.15, 5.0, 2.45],
+    [5.6, 5.0, 2.9],
+    [7.0, 5.0, 2.9]
+  ],
+  "fittings": [
+    { "at": [3.8, 5.0, 2.9], "angleDeg": 45 },
+    { "at": [4.25, 5.0, 2.45], "angleDeg": 45 },
+    { "at": [5.15, 5.0, 2.45], "angleDeg": 45 },
+    { "at": [5.6, 5.0, 2.9], "angleDeg": 45 }
+  ],
+  "metrics": { "length_m": 5.373, "added_m": 0.373, "bends": 4, "min_clearance_m": 0.15 },
+  "validation": { "passed": true, "rulesetVersion": "1.0", "violations": [] },
+  "readSet": {
+    "STR-L03:0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d-000e1f20": "6d0d6c8e-2b4f-4d2a-9c1e-3f5a7b9c1d2e",
+    "MEP-L03:7b1c2d3e-0000-4000-8000-000000000001-0001a2b3": "9a8b7c6d-5e4f-4321-8765-43210fedcba9"
+  },
+  "createdAt": "2026-11-05T09:14:02.610Z"
+}

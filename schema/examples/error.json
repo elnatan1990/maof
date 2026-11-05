@@ -1,0 +1,11 @@
+{
+  "code": "STALE_VERSION",
+  "message": "The duct moved since this proposal was computed; request a new proposal.",
+  "requestId": "req-01HZX4M2Q9",
+  "details": {
+    "conflicts": {
+      "MEP-L03:7b1c2d3e-0000-4000-8000-000000000001-0001a2b3": { "expected": "9a8b7c6d-5e4f-4321-8765-43210fedcba9", "actual": "c1d2e3f4-0000-4000-8000-0000000000aa" }
+    }
+  },
+  "retryable": true
+}

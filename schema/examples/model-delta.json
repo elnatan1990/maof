@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0",
+  "projectId": "prj-7f2a",
+  "modelId": "STR-L03",
+  "sequence": 4182,
+  "transactionId": "STR-L03:4182",
+  "source": { "app": "revit", "event": "document_changed", "user": "architect@example.invalid", "ts": "2026-11-05T09:14:02Z" },
+  "elements": [
+    {
+      "id": "STR-L03:0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d-000e1f20",
+      "versionGuid": "6d0d6c8e-2b4f-4d2a-9c1e-3f5a7b9c1d2e",
+      "category": "structural_framing",
+      "op": "modified",
+      "bbox": { "min": [4.4, 0.0, 2.6], "max": [5.0, 10.0, 3.2] }
+    }
+  ]
+}
