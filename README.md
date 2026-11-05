@@ -1,7 +1,7 @@
 # Real-Time MEP Coordination — Design & Algorithmic Spike
 
 **Elnatan Davidovitch** · elnatan1990@gmail.com · 050-6998223 · [linkedin.com/in/elndav](https://www.linkedin.com/in/elndav)
-Companion: **[interactive page](https://maof-mep.vercel.app)** (3-D scene — move the beam yourself) · **[PDF](docs/MEP-Coordination-Spike.pdf)** · `python -m routing` prints every number quoted below.
+Companion: **[interactive page](https://maof-mep.vercel.app)** (3-D scene — move the beam yourself) · **[PDF](docs/MEP-Coordination-Spike.pdf)** · [תקציר בעברית (PDF)](docs/MEP-Coordination-Spike-HE.pdf) · `python -m routing` prints every number quoted below.
 
 **Assumptions.** (1) The beam is a downstand flush with the slab: its top (Z = 3.20) is the soffit, so routing *over* it is infeasible. (2) The suspended-ceiling height `Z_c` comes from the architectural model; the exercise gives none, so the worked example leaves it open and a second case shows it biting. (3) The exercise's duct is a centre-line; a real 400 × 300 insulated duct is the second case. (4) Metres, project shared coordinates; the plugin converts Revit's internal feet. (5) The architect moves the beam +0.40 m in X.
 

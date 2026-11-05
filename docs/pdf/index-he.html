@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>תיאום MEP בזמן אמת — מה נעשה, בשפה פשוטה</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400&display=swap">
+<style>
+  @page { size: A4; margin: 12mm 12mm 12mm; }
+  :root { --ink: #122033; --muted: #55657a; --accent: #0f7c86; --accent-soft: #e3f2f3; --line: #d6dce3; --soft: #f1f4f3; --route: #1f9d55; --clash: #c8321f; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #fff; }
+  body { font-family: "Heebo", "Segoe UI", Arial, sans-serif; color: var(--ink); font-size: 10pt; line-height: 1.45; direction: rtl; }
+  code { font-family: "IBM Plex Mono", Consolas, monospace; font-size: 8.6pt; background: var(--soft); padding: 0 3px; border-radius: 2px; direction: ltr; unicode-bidi: embed; }
+  h1 { font-size: 19pt; margin: 0; line-height: 1.2; }
+  h2 { font-size: 12.5pt; margin: 4.5mm 0 2mm; padding-bottom: 1mm; border-bottom: 1.5px solid var(--ink); }
+  h2 span { color: var(--accent); margin-inline-end: 2.5mm; unicode-bidi: isolate; }
+  h3 { font-size: 10.5pt; margin: 2.5mm 0 1mm; }
+  p { margin: 0 0 2mm; }
+  ul, ol { margin: 0 0 2mm; padding-right: 5mm; }
+  li { margin-bottom: 1mm; }
+  b { font-weight: 600; }
+  .header { display: flex; justify-content: space-between; align-items: flex-end; gap: 8mm; border-bottom: 2px solid var(--ink); padding-bottom: 2.5mm; margin-bottom: 3mm; }
+  .header .meta { font-size: 8.8pt; color: var(--muted); text-align: left; direction: ltr; white-space: nowrap; line-height: 1.5; }
+  .header .meta b { color: var(--ink); }
+  .header .meta a { color: var(--accent); text-decoration: none; }
+  .small { font-size: 8.8pt; color: var(--muted); }
+  .lead { font-size: 10.6pt; }
+  .box { background: var(--accent-soft); border-right: 3px solid var(--accent); padding: 2.4mm 3.2mm; margin: 2.5mm 0 3mm; border-radius: 0 0 0 3px; }
+  .box b { color: var(--accent); }
+  .box a { color: var(--accent); text-decoration: none; direction: ltr; unicode-bidi: embed; }
+  .result { background: var(--soft); border-radius: 3px; padding: 2.4mm 3.2mm; margin: 2mm 0 3mm; break-inside: avoid; }
+  .result .num { font-size: 15pt; font-weight: 700; color: var(--route); direction: ltr; unicode-bidi: embed; }
+  .result .k { font-size: 8.8pt; color: var(--muted); }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3mm; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+  .card { border: 1px solid var(--line); border-radius: 3px; padding: 2.2mm 3mm; break-inside: avoid; }
+  .card h3 { margin-top: 0; }
+  figure { margin: 2mm auto 2.5mm; break-inside: avoid; page-break-inside: avoid; width: 150mm; }
+  figure img { display: block; width: 100%; height: auto; }
+  figcaption { font-size: 8.6pt; color: var(--muted); margin-top: 1mm; }
+  table { border-collapse: collapse; width: 100%; font-size: 8.8pt; margin: 1.5mm 0 3mm; }
+  th, td { text-align: right; padding: 1mm 2mm; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 8pt; color: var(--muted); }
+  .ltr { direction: ltr; unicode-bidi: embed; }
+  .steps li { margin-bottom: 1.4mm; }
+  .footer { margin-top: 4mm; padding-top: 2mm; border-top: 1px solid var(--line); font-size: 8.8pt; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>תיאום MEP בזמן אמת — מה נעשה, בשפה פשוטה</h1>
+    <div class="small" style="margin-top:1.5mm">תקציר בעברית של תרגיל הבית. הפתרון המלא, עם הפסאודו-קוד, התרשימים וה-JSON, נמצא במסמך באנגלית ובריפו.</div>
+  </div>
+  <div class="meta"><b>Elnatan Davidovitch</b><br>elnatan1990@gmail.com · 050-6998223 · <a href="https://www.linkedin.com/in/elndav">linkedin.com/in/elndav</a><br>code: <a href="https://github.com/elnatan1990/maof">github.com/elnatan1990/maof</a> · live: <a href="https://maof-mep.vercel.app">maof-mep.vercel.app</a></div>
+</div>
+
+<p class="lead">התרגיל ביקש שלושה דברים: איך מחשבים נתיב שעוקף מכשול בתלת-ממד, איך המידע זורם בזמן אמת כשמישהו מזיז קורה ב-Revit, ואיך משלבים AI בלי שיפר כללים הנדסיים. הנה מה שבניתי, איך זה עובד, ואיפה רואים את זה בפועל.</p>
+
+<div class="box"><b>מה מצורף ואיפה מסתכלים.</b>
+<ul style="margin:1mm 0 0">
+  <li><b>המסמך באנגלית</b> (2 עמודים + נספח עם הקוד) — התשובה המלאה לשלושת החלקים.</li>
+  <li><b>דף אינטראקטיבי</b> <a href="https://maof-mep.vercel.app">maof-mep.vercel.app</a> — סצנה תלת-ממדית: מזיזים את הקורה בסליידר ורואים את התעלה מנותבת מחדש, את צנרת המידע ואת שער הבטיחות.</li>
+  <li><b>הקוד, הטסטים וסכמות ה-API</b> <a href="https://github.com/elnatan1990/maof">github.com/elnatan1990/maof</a> — סקריפט Python קצר (<code>python -m routing</code>) שמדפיס את כל המספרים שבמסמך, ו-22 טסטים שמוודאים אותם.</li>
+</ul></div>
+
+<h2><span>1</span>הנתיב מסביב לקורה</h2>
+<p><b>הבעיה בשפה פשוטה.</b> תעלה ישרה מנקודה A לנקודה B חותכת קורת בטון. צריך לעקוף את הקורה, לשמור ממנה מרחק של לפחות 15 ס"מ, ולעשות זאת עם כמה שפחות פניות, בזוויות נקיות של 45° או 90°.</p>
+<p><b>מה עשיתי.</b> במקום לחפש נתיב ברשת תלת-ממדית (איטי, וצריך "ליישר" את התוצאה אחר כך), מחשבים את העקיפה ישירות:</p>
+<ol class="steps">
+  <li><b>מנפחים את הקורה</b> ב-15 ס"מ לכל כיוון (ובתעלה אמיתית, גם בחצי העובי של התעלה). מה שלא נוגע בקופסה המנופחת בטוח ממרחק 15 ס"מ.</li>
+  <li><b>בודקים ארבע אפשרויות</b>: מתחת לקורה, מעל, מימין, משמאל. לכל אחת יש בדיקת היתכנות פשוטה: מעל הקורה יש רצפה (אז אי אפשר), מתחת לקורה צריך שיישאר מקום מעל התקרה המונמכת, מהצדדים צריך להישאר בתוך האזור.</li>
+  <li><b>בוחרים את הזולה</b>: פחות אורך נוסף ופחות פניות. כשיש תיקו, בוחרים תמיד באותו סדר, כך שאותה שאלה נותנת תמיד אותה תשובה. זה חשוב כדי שאפשר יהיה לעקוב ולבדוק אחר כך.</li>
+  <li><b>אם אף אפשרות לא מתאימה</b>, המערכת לא ממציאה מסלול. היא מחזירה "אין מסלול" עם הסיבה (למשל: החלל מעל התקרה נמוך מדי) ופותחת משימת תיאום לקונסטרוקטור: שרוול דרך הקורה, הנמכה מקומית, או הזזת הקורה. כלי תיאום חייב להגיד למה אין פתרון.</li>
+  <li><b>בודקים את התוצאה</b> עם אותם כללים שבודקים גם הצעות של ה-AI (חלק 3).</li>
+</ol>
+<div class="result">
+  <div class="grid3">
+    <div><div class="num">5.373 m</div><div class="k">אורך המסלול החדש (במקום 5.0 מ', כלומר 37 ס"מ נוספים)</div></div>
+    <div><div class="num">4 × 45°</div><div class="k">ארבעה אביזרים, כולם בזווית נקייה</div></div>
+    <div><div class="num">0.15 m</div><div class="k">המרחק מהקורה, נמדד ולא מוערך</div></div>
+  </div>
+  <p style="margin:2mm 0 0">המסלול יורד ב-45° מתחת לקורה, עובר ישר מתחתיה ועולה חזרה: <span class="ltr">A → (3.40, 5, 2.90) → (3.85, 5, 2.45) → (4.75, 5, 2.45) → (5.20, 5, 2.90) → B</span>. הגרסה עם פניות של 90° ארוכה יותר (5.90 מ'), אז 45° עדיף גם באורך וגם בלחץ האוויר. "V" עם שתי פניות בלבד לא אפשרי: הרגליים שלו היו בזווית של 11–14° ועוברות 9 ס"מ מהקורה.</p>
+</div>
+<figure style="width:118mm"><img src="../diagrams/route-xz.svg" alt="חתך"><figcaption>חתך בגובה Y = 5: הקורה (אפור), מעטפת ה-15 ס"מ (כתום), התעלה המקורית (אדום מקווקו) והמסלול החדש (ירוק).</figcaption></figure>
+<p><b>ומה קורה עם תעלה אמיתית?</b> תעלה של 40×30 ס"מ עם בידוד צריכה לרדת לגובה מרכז 2.26 מ', כלומר תחתיתה ב-2.07. אם התקרה המונמכת נמצאת ב-2.70 מ' (מצב רגיל במשרד), אין מקום, והמערכת תחזיר "אין מסלול" במקום להסתיר את הבעיה. בדף האינטראקטיבי אפשר לראות את זה: לבחור "400×300", להדליק את התקרה, ולהזיז אותה.</p>
+<p><b>למה לא שיטות אחרות?</b> רשת ווקסלים (A*) איטית, דורשת זיכרון רב ומייצרת "מדרגות"; גרף נראוּת נותן זוויות שרירותיות שאינן אביזרי תעלה; RRT* אקראי ולא מתאים לתעלות. כשיש יותר ממכשול אחד בדרך, השלב הבא הוא גרף דליל על פאות הקופסאות עם חיפוש A* שמעניש פניות, ואז "חיתוך פינות" ל-45°. זה מתואר במסמך, לא נבנה בקוד, כי התרגיל ביקש גישה ולא מוצר.</p>
+
+<h2><span>2</span>מה קורה כשהאדריכל מזיז קורה ב-40 ס"מ</h2>
+<p><b>בשפה פשוטה.</b> התוסף ב-Revit של האדריכל מזהה שהקורה זזה ושולח לענן רק את <b>ההבדל</b>: הקופסה החדשה של הקורה, המזהה שלה וגרסתה. זו הודעה של פחות מ-1 KB, לא מודל של מאות מגה-בייט. בענן יושבת "תאומה" קלה של המודל (רק נפחים וקווי מרכז), שמוצאת אילו תעלות נפגעו, מחשבת להן מסלול חדש תוך פחות מאלפית שנייה, בודקת אותו, ושולחת למהנדס המכונות <b>הצעה</b>. ההצעה מצטיירת כשכבה מעל המודל שלו, בלי לשנות לו שום דבר עד שהוא לוחץ "אשר". גם האדריכל מקבל הודעה: "ההזזה שלך משפיעה על 3 תעלות". זה הסיגנל הכי שימושי במוצר.</p>
+<div class="grid2">
+  <div class="card"><h3>למה זה בתוך שניות ולא תוקע את Revit</h3><ul>
+    <li>שולחים הבדלים, לא מודלים. המודל הכבד לא עוזב את המחשב של המשתמש.</li>
+    <li>ההצעה היא שכבה, לא עריכה. Revit לא מחשב מחדש כלום עד האישור.</li>
+    <li>שינוי אחד שמשפיע על 200 תעלות נשלח כהודעה אחת, לא 200.</li>
+    <li>יעד: חצי שנייה במקרה הרגיל, עד 3 שניות במקרה גרוע. מה שלא בשליטתנו: הזמן ש-Revit עצמו לוקח לעדכן את המודל אחרי השינוי.</li>
+  </ul></div>
+  <div class="card"><h3>הפרטים שמי שמכיר Revit יחפש</h3><ul>
+    <li>הקורה של הקונסטרוקטור יושבת במודל מקושר שמהנדס המכונות רואה רק אחרי "reload". הענן מגשר על הפער.</li>
+    <li>זיהוי לפי <code>UniqueId</code> וגרסה לפי <code>VersionGuid</code>, יחידות מומרות מרגל למטר.</li>
+    <li>אישור הצעה בודק שאף אחד מהאלמנטים שהיא תלויה בהם לא השתנה בינתיים. אם כן, מבקשים הצעה חדשה.</li>
+    <li>תקשורת ב-WebSocket (מתאים לתוספי Revit ב-.NET Framework ולדפדפן כאחד), תור הודעות מסודר, ושחזור אחרי ניתוק.</li>
+  </ul></div>
+</div>
+<figure style="width:150mm"><img src="../diagrams/pipeline.svg" alt="צנרת"><figcaption>זרימת המידע: התוסף ב-Revit ← שער ← תור הודעות ← מנוע מרחבי ← דחיפה למהנדס המכונות, לצופה הווב ולאדריכל.</figcaption></figure>
+
+<h2><span>3</span>שילוב AI בצורה בטוחה, וחלוקת העבודה מול המפתחת של התוסף</h2>
+<p><b>העיקרון.</b> ה-AI רשאי <b>להמליץ ולדרג</b> בין מסלולים שהמנוע הדטרמיניסטי בנה, אבל הוא <b>לא מצייר גאומטריה</b>. כך גם ההמלצה הטובה ביותר שלו היא מסלול שכבר נבדק. אם בכל זאת נותנים למודל להציע נקודות, ההצעה עוברת את אותם כללים קשיחים: מרווח מהמכשולים, גובה מעל התקרה, שיפוע לצנרת גרביטציה (שלא יכולה לעלות), זוויות של 45° או 90° בלבד, אורך ישר מינימלי. נכשל? תיקון מוגבל (דוחפים את הנקודות החוצה מהמעטפת) ובדיקה חוזרת. עדיין נכשל? משתמשים במסלול הדטרמיניסטי. <b>כל החלטה נרשמת</b>: איזו גרסת כללים, איזה מודל, אילו כללים עברו ונכשלו. מריצים קודם ב"מצב צל" בלי להציג, ויש מתג כיבוי.</p>
+<p><b>החוזה מול המפתחת של תוסף ה-Revit.</b> חמש הודעות JSON עם סכמות ודוגמאות בריפו: שינוי במודל (מהתוסף למנוע), בקשת ניתוב ותשובה, הצעת ניתוב (מהמנוע ללקוחות), החלטה (אישור/דחייה), ושגיאה. חלוקת העבודה ברורה: היא אחראית ללכידת השינויים ב-Revit, להמרת היחידות, לשכבת ההצגה ולהפיכת הצעה מאושרת לתעלות ואביזרים אמיתיים; המנוע, הבדיקות וההפצה אצלי. ה<b>דוגמאות משמשות כ"מנוע מדומה"</b>, כך שהיא יכולה לבנות ולהדגים את התוסף עוד לפני שהמנוע קיים.</p>
+<figure style="width:135mm"><img src="../diagrams/safety-gate.svg" alt="שער הבטיחות"><figcaption>שער הבטיחות: המודל ממליץ, הבודק הדטרמיניסטי מחליט, תיקון מוגבל, נפילה למסלול הדטרמיניסטי, ורישום של כל החלטה.</figcaption></figure>
+
+<h2><span>·</span>איך לעבור על החומר בעשר דקות</h2>
+<ol class="steps">
+  <li>לפתוח את הדף <a href="https://maof-mep.vercel.app" class="ltr">maof-mep.vercel.app</a>, להזיז את הקורה בסליידר ולראות את התעלה מנותבת מחדש; לבחור תעלה 400×300 ולהדליק את התקרה כדי לראות "אין מסלול" עם סיבה.</li>
+  <li>לקרוא את שני עמודי המסמך באנגלית: שם ההנמקה המלאה, הפסאודו-קוד, ה-JSON והתרשימים.</li>
+  <li>בריפו: <code>python -m routing</code> מדפיס את המספרים, <code>python -m pytest</code> מריץ 22 טסטים, ובתיקייה <code>schema/</code> הסכמות והדוגמאות.</li>
+</ol>
+<div class="footer">אלנתן דוידוביץ · 050-6998223 · elnatan1990@gmail.com · כל המספרים במסמך מחושבים על ידי הקוד ומאומתים בטסטים, לא נכתבו ביד.</div>
+</body>
+</html>
